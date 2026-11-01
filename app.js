@@ -308,8 +308,9 @@ function updateBatchBar() {
 
   if (countSpan) countSpan.textContent = count;
   if (btnMergeSet) {
-    if (isEditMode && count >= 2) {
+    if (count >= 1) {
       btnMergeSet.classList.remove('hidden');
+      btnMergeSet.textContent = `📦 הגדר / הוסף לסט (${count})`;
     } else {
       btnMergeSet.classList.add('hidden');
     }
@@ -425,15 +426,27 @@ function handleBatchClaimSubmit(e) {
   renderCurrentView();
 }
 
-// Merge Set Modal Functions
+// Merge / Add to Set Functions
 function initMergeSetModal() {
   const form = document.getElementById('merge-set-form');
   if (form) form.addEventListener('submit', handleMergeSetSubmit);
 }
 
+function toggleMergeMode(mode) {
+  const newFields = document.getElementById('merge-new-set-fields');
+  const existingGroup = document.getElementById('merge-existing-select-group');
+  if (mode === 'existing') {
+    if (newFields) newFields.classList.add('hidden');
+    if (existingGroup) existingGroup.classList.remove('hidden');
+  } else {
+    if (newFields) newFields.classList.remove('hidden');
+    if (existingGroup) existingGroup.classList.add('hidden');
+  }
+}
+
 function openMergeSetModal() {
-  if (selectedBooksMap.size < 2) {
-    alert('יש לסמן לפחות 2 ספרים כדי לאחד אותם לסט שלם.');
+  if (selectedBooksMap.size === 0) {
+    alert('יש לסמן לפחות ספר אחד כדי להגדיר או להוסיף לסט.');
     return;
   }
 
@@ -442,20 +455,55 @@ function openMergeSetModal() {
   const countEl = document.getElementById('merge-set-count');
   const titleInput = document.getElementById('merge-set-title');
   const authorInput = document.getElementById('merge-set-author');
+  const existingSelect = document.getElementById('merge-existing-set-select');
+  const modeSelect = document.getElementById('merge-target-mode');
 
   countEl.textContent = selectedBooksMap.size;
   listEl.innerHTML = '';
 
   const items = Array.from(selectedBooksMap.values());
+  const selectedBoxIds = new Set(items.map(it => it.boxId));
+
+  // Find all existing sets in the relevant boxes
+  let existingSets = [];
+  catalogData.forEach(box => {
+    if (selectedBoxIds.has(box.box_id)) {
+      (box.books || []).forEach(b => {
+        if (b.is_set) {
+          existingSets.push({ boxId: box.box_id, book: b });
+        }
+      });
+    }
+  });
+
+  // Populate existing sets dropdown
+  if (existingSelect) {
+    existingSelect.innerHTML = '';
+    if (existingSets.length > 0) {
+      existingSets.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = `${item.boxId}:::${item.book.id}`;
+        opt.textContent = `ארגז ${item.boxId}: ${item.book.title}`;
+        existingSelect.appendChild(opt);
+      });
+      if (modeSelect) modeSelect.value = 'new';
+      toggleMergeMode('new');
+    } else {
+      if (modeSelect) modeSelect.value = 'new';
+      toggleMergeMode('new');
+    }
+  }
+
+  // Suggest a base title
   let commonTitle = '';
   let commonAuthor = items[0].author || '';
-
-  // Extract a sensible suggested base title
   const firstTitle = items[0].bookTitle;
   const match = firstTitle.match(/^([^\-\–\—:]+)/);
   if (match) commonTitle = match[1].trim();
 
-  titleInput.value = `${commonTitle} (סט שלם - ${items.length} כרכים)`;
+  titleInput.value = items.length === 1 
+    ? `${commonTitle} (סט שלם)` 
+    : `${commonTitle} (סט שלם - ${items.length} כרכים)`;
   authorInput.value = commonAuthor;
 
   items.forEach((item, idx) => {
@@ -480,48 +528,87 @@ function closeMergeSetModal() {
 function handleMergeSetSubmit(e) {
   e.preventDefault();
 
-  const title = document.getElementById('merge-set-title').value.trim();
-  const author = document.getElementById('merge-set-author').value.trim();
+  const mode = document.getElementById('merge-target-mode').value;
   const items = Array.from(selectedBooksMap.values());
 
-  if (!title || items.length < 2) return;
+  if (items.length === 0) return;
 
-  // Group items by boxId
-  const byBox = {};
-  items.forEach(it => {
-    if (!byBox[it.boxId]) byBox[it.boxId] = [];
-    byBox[it.boxId].push(it);
-  });
+  if (mode === 'existing') {
+    // Add selected books to existing set
+    const selectedVal = document.getElementById('merge-existing-set-select').value;
+    if (!selectedVal) return;
+    const [targetBoxId, targetBookId] = selectedVal.split(':::');
 
-  Object.keys(byBox).forEach(boxId => {
-    const boxItems = byBox[boxId];
-    const box = catalogData.find(b => b.box_id == boxId);
+    const box = catalogData.find(b => b.box_id == targetBoxId);
     if (!box) return;
+    const targetSet = (box.books || []).find(b => b.id === targetBookId);
+    if (!targetSet) return;
 
-    const removedIds = boxItems.map(it => it.bookId).filter(Boolean);
-    const volumeTitles = boxItems.map(it => it.bookTitle);
+    if (!Array.isArray(targetSet.volumes)) targetSet.volumes = [];
 
-    // Remove old items
-    box.books = box.books.filter(b => !removedIds.includes(b.id) && !volumeTitles.includes(b.title));
+    const newTitles = items.map(it => it.bookTitle);
+    const removedIds = items.map(it => it.bookId).filter(Boolean);
 
+    targetSet.volumes.push(...newTitles);
+    targetSet.volumes_count = targetSet.volumes.length;
+    targetSet.notes = `כולל ${targetSet.volumes.length} כרכים: ${targetSet.volumes.join(', ')}`;
+
+    // Remove individual books from box
+    box.books = box.books.filter(b => !removedIds.includes(b.id) && !newTitles.includes(b.title));
+
+    saveCatalogEdits({
+      mergedSet: {
+        id: targetSet.id,
+        box_id: targetBoxId,
+        title: targetSet.title,
+        volumes: targetSet.volumes,
+        volumes_count: targetSet.volumes_count,
+        removedIds: removedIds
+      }
+    });
+
+    showToast(`${items.length} ספרים נוספו בהצלחה לסט: "${targetSet.title}"!`);
+  } else {
     // Create new unified set
-    const newSetObj = {
-      id: `set_user_${boxId}_${Date.now()}`,
-      box_id: boxId,
-      title: title,
-      author: author,
-      is_set: true,
-      volumes_count: volumeTitles.length,
-      volumes: volumeTitles,
-      notes: `כולל: ${volumeTitles.join(', ')}`,
-      removedIds: removedIds
-    };
+    const title = document.getElementById('merge-set-title').value.trim();
+    const author = document.getElementById('merge-set-author').value.trim();
+    if (!title) return;
 
-    box.books.unshift(newSetObj);
-    saveCatalogEdits({ mergedSet: newSetObj });
-  });
+    const byBox = {};
+    items.forEach(it => {
+      if (!byBox[it.boxId]) byBox[it.boxId] = [];
+      byBox[it.boxId].push(it);
+    });
 
-  showToast(`הספרים אוחדו בהצלחה לסט: "${title}"!`);
+    Object.keys(byBox).forEach(boxId => {
+      const boxItems = byBox[boxId];
+      const box = catalogData.find(b => b.box_id == boxId);
+      if (!box) return;
+
+      const removedIds = boxItems.map(it => it.bookId).filter(Boolean);
+      const volumeTitles = boxItems.map(it => it.bookTitle);
+
+      box.books = box.books.filter(b => !removedIds.includes(b.id) && !volumeTitles.includes(b.title));
+
+      const newSetObj = {
+        id: `set_user_${boxId}_${Date.now()}`,
+        box_id: boxId,
+        title: title,
+        author: author,
+        is_set: true,
+        volumes_count: volumeTitles.length,
+        volumes: volumeTitles,
+        notes: `כולל: ${volumeTitles.join(', ')}`,
+        removedIds: removedIds
+      };
+
+      box.books.unshift(newSetObj);
+      saveCatalogEdits({ mergedSet: newSetObj });
+    });
+
+    showToast(`הספרים הוגדרו בהצלחה כסט שלם: "${title}"!`);
+  }
+
   closeMergeSetModal();
   clearBatchSelection();
   renderCurrentView();

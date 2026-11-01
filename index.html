@@ -292,7 +292,7 @@
   <!-- Floating Batch Action Bar -->
   <div id="batch-action-bar" class="batch-bar hidden">
     <div>נבחרו <strong id="batch-count" class="batch-count">0</strong> פריטים</div>
-    <button class="btn-batch-merge hidden" id="btn-batch-merge-set" onclick="openMergeSetModal()">📦 אחד כסט שלם</button>
+    <button class="btn-batch-merge" id="btn-batch-merge-set" onclick="openMergeSetModal()">📦 הגדר / הוסף לסט</button>
     <button class="btn-batch-claim" onclick="openBatchClaimModal()">🖐️ אני מעוניין/ת בכולם יחד</button>
     <button class="btn-batch-clear" onclick="clearBatchSelection()">נקה בחירה</button>
   </div>
@@ -302,32 +302,49 @@
     <div class="modal-card" style="max-width: 520px;">
       <button class="modal-close" onclick="closeMergeSetModal()">&times;</button>
       <div class="modal-header">
-        <div class="modal-title">איחוד ספרים לסט שלם</div>
+        <div class="modal-title">הגדרה / הוספה לסט שלם</div>
         <div style="font-size: 0.88rem; color: var(--text-muted); margin-top: 4px;">
-          הספרים שנבחרו יאוחדו לשורה אחת של סט שלם, עם פירוט הכרכים בתוכו.
+          ניתן לאחד את הפריטים שנבחרו לסט חדש, או לצרף אותם לסט קיים בארגז.
         </div>
       </div>
 
       <form id="merge-set-form">
-        <div class="form-group">
-          <label for="merge-set-title">שם הסט המאוחד *</label>
-          <input type="text" id="merge-set-title" class="form-input" required placeholder="למשל: סדרת דעת מקרא (סט שלם)">
+        <div class="form-group" id="merge-target-mode-group">
+          <label for="merge-target-mode">סוג פעולה:</label>
+          <select id="merge-target-mode" class="form-input" onchange="toggleMergeMode(this.value)">
+            <option value="new">✨ צור סט חדש מהספרים שנבחרו</option>
+            <option value="existing">➕ הוסף ספרים אלו לסט קיים</option>
+          </select>
         </div>
 
-        <div class="form-group">
-          <label for="merge-set-author">מחבר / הוצאה (אופציונלי)</label>
-          <input type="text" id="merge-set-author" class="form-input" placeholder="למשל: מוסד הרב קוק">
+        <div class="form-group hidden" id="merge-existing-select-group">
+          <label for="merge-existing-set-select">בחר לאיזה סט להוסיף אותם:</label>
+          <select id="merge-existing-set-select" class="form-input">
+            <!-- Populated by JS -->
+          </select>
+        </div>
+
+        <div id="merge-new-set-fields">
+          <div class="form-group">
+            <label for="merge-set-title">שם הסט *</label>
+            <input type="text" id="merge-set-title" class="form-input" placeholder="למשל: סדרת דעת מקרא (סט שלם)">
+          </div>
+
+          <div class="form-group">
+            <label for="merge-set-author">מחבר / הוצאה (אופציונלי)</label>
+            <input type="text" id="merge-set-author" class="form-input" placeholder="למשל: מוסד הרב קוק">
+          </div>
         </div>
 
         <div>
-          <label style="font-size: 0.88rem; font-weight: 600;">הכרכים שייכללו בסט (<span id="merge-set-count">0</span>):</label>
+          <label style="font-size: 0.88rem; font-weight: 600;">הספרים שנבחרו (<span id="merge-set-count">0</span>):</label>
           <ul id="merge-set-list" class="batch-selected-list">
             <!-- Rendered by JS -->
           </ul>
         </div>
 
         <div class="modal-actions">
-          <button type="submit" class="btn-submit" style="background: #f59e0b; color: #0f172a;">📦 אשר וצור סט שלם</button>
+          <button type="submit" class="btn-submit" style="background: #f59e0b; color: #0f172a;">📦 אשר ועדכן סט</button>
           <button type="button" class="btn-action" onclick="closeMergeSetModal()">ביטול</button>
         </div>
       </form>
