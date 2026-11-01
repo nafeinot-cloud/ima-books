@@ -64,6 +64,7 @@
     <div class="filter-group">
       <button class="filter-btn active" data-filter="all">הכל</button>
       <button class="filter-btn" data-filter="available">ספרים פנויים בלבד</button>
+      <button class="filter-btn" data-filter="sets">📦 סטים שלמים בלבד</button>
       <button class="filter-btn" data-filter="claimed">ספרים שנבחרו</button>
     </div>
   </div>
@@ -287,6 +288,52 @@
 
   <!-- Toast Notification -->
   <div id="toast" class="toast">הבחירה נשמרה בהצלחה!</div>
+
+  <!-- Floating Batch Action Bar -->
+  <div id="batch-action-bar" class="batch-bar hidden">
+    <div>נבחרו <strong id="batch-count" class="batch-count">0</strong> ספרים</div>
+    <button class="btn-batch-claim" onclick="openBatchClaimModal()">🖐️ אני מעוניין/ת בכל הספרים שנבחרו</button>
+    <button class="btn-batch-clear" onclick="clearBatchSelection()">נקה בחירה</button>
+  </div>
+
+  <!-- Batch Claim Modal -->
+  <div id="batch-claim-modal" class="modal-backdrop hidden">
+    <div class="modal-card" style="max-width: 520px;">
+      <button class="modal-close" onclick="closeBatchClaimModal()">&times;</button>
+      <div class="modal-header">
+        <div class="modal-title">בקשת מספר ספרים יחד</div>
+        <div style="font-size: 0.9rem; color: var(--text-muted); margin-top: 4px;">
+          כל הספרים שנבחרו יירשמו על שמך בטבלה.
+        </div>
+      </div>
+
+      <div>
+        <label style="font-size: 0.88rem; font-weight: 600;">הספרים שנבחרו (<span id="batch-modal-count">0</span>):</label>
+        <ul id="batch-modal-list" class="batch-selected-list">
+          <!-- Rendered by JS -->
+        </ul>
+      </div>
+
+      <form id="batch-claim-form">
+        <div class="form-group">
+          <label for="batch-claim-name">שמך המלא *</label>
+          <input type="text" id="batch-claim-name" class="form-input" required placeholder="למשל: דני כהן (בן / נכד...)">
+        </div>
+
+        <div class="form-group">
+          <label for="batch-claim-phone">טלפון או הערה (אופציונלי)</label>
+          <input type="text" id="batch-claim-phone" class="form-input" placeholder="מספר נייד או הערה">
+        </div>
+
+        <div class="modal-actions">
+          <button type="submit" class="btn-submit">✅ שמור את כל הספרים על שמי</button>
+          <a href="#" id="batch-whatsapp-link" target="_blank" class="btn-whatsapp hidden">
+            💬 שלח רשימה בוואטסאפ
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- Scripts -->
   <script src="books_data.js"></script>

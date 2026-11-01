@@ -399,6 +399,127 @@ body {
   border-width: 1.5px;
 }
 
+.volumes-toggle {
+  background: none;
+  border: none;
+  color: #b45309;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: underline;
+  margin-top: 3px;
+}
+
+.volumes-list {
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: rgba(254, 243, 199, 0.4);
+  border: 1px dashed #fde68a;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: #78350f;
+  line-height: 1.4;
+  list-style-type: disc;
+  padding-right: 18px;
+}
+
+/* Checkbox for Multi-select */
+.book-checkbox {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: var(--primary);
+  margin-left: 8px;
+}
+
+.book-item.selected {
+  background: #eff6ff !important;
+  border-color: #3b82f6 !important;
+}
+
+/* Floating Batch Action Bar */
+.batch-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: #fff;
+  padding: 0.75rem 1.5rem;
+  border-radius: 9999px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  z-index: 1500;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.batch-count {
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.btn-batch-claim {
+  background: #10b981;
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1.25rem;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s;
+}
+
+.btn-batch-claim:hover {
+  background: #059669;
+}
+
+.btn-batch-clear {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.88rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.btn-batch-clear:hover {
+  color: #fff;
+}
+
+/* Batch Modal List */
+.batch-selected-list {
+  max-height: 200px;
+  overflow-y: auto;
+  margin: 0.75rem 0 1rem;
+  padding: 0.5rem;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  list-style: none;
+}
+
+.batch-selected-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 8px;
+  font-size: 0.88rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.batch-selected-item:last-child {
+  border-bottom: none;
+}
+
 .book-item.claimed {
   background: #fffbeb;
   border-color: #fde68a;

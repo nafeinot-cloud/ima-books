@@ -7,6 +7,9 @@ let searchQuery = '';
 let isEditMode = false;
 let googleScriptUrl = localStorage.getItem('google_sheet_script_url') || '';
 
+// Multi-select Batch state
+const selectedBooksMap = new Map(); // key: "boxId__bookIdOrTitle" => { boxId, bookId, bookTitle, isSet }
+
 // Lightbox state
 let currentZoom = 1;
 let currentRotation = 0;
@@ -20,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initNavigation();
   initSearchAndFilter();
   initModal();
+  initBatchModal();
   initEditModal();
   initLightbox();
   initSettings();
@@ -43,7 +47,6 @@ function saveClaimsToStorage() {
 // Load catalog & apply user edits
 function loadData() {
   if (typeof BOOKS_DATA !== 'undefined' && Array.isArray(BOOKS_DATA)) {
-    // Deep clone to allow in-memory edits
     catalogData = JSON.parse(JSON.stringify(BOOKS_DATA));
   } else {
     catalogData = [];
@@ -54,7 +57,7 @@ function loadData() {
     (box.books || []).forEach(book => {
       if (!book.is_set) {
         const t = (book.title || '') + ' ' + (book.author || '');
-        if (t.includes('סט ') || t.includes(' כרכים') || t.includes('חלקים') || t.includes('ש"ס') || t.includes('כרך א-') || t.includes('מהדורת שבתי פרנקל')) {
+        if (t.includes('סט ') || t.includes(' כרכים') || t.includes('ש"ס') || t.includes('מהדורת שבתי פרנקל')) {
           book.is_set = true;
         }
       }
@@ -91,7 +94,6 @@ function loadData() {
       });
     }
 
-    // Custom added books
     if (Array.isArray(savedEdits.customBooks)) {
       savedEdits.customBooks.forEach(cb => {
         const box = catalogData.find(b => b.box_id === cb.box_id);
@@ -119,15 +121,9 @@ function saveCatalogEdits(editsObj) {
     if (!current.books) current.books = {};
     if (!current.customBooks) current.customBooks = [];
 
-    if (editsObj.box) {
-      current.boxes[editsObj.box.id] = { category: editsObj.box.category };
-    }
-    if (editsObj.book) {
-      current.books[editsObj.book.id] = editsObj.book;
-    }
-    if (editsObj.newBook) {
-      current.customBooks.push(editsObj.newBook);
-    }
+    if (editsObj.box) current.boxes[editsObj.box.id] = { category: editsObj.box.category };
+    if (editsObj.book) current.books[editsObj.book.id] = editsObj.book;
+    if (editsObj.newBook) current.customBooks.push(editsObj.newBook);
 
     localStorage.setItem('catalog_edits', JSON.stringify(current));
   } catch (e) {
@@ -239,6 +235,7 @@ function updateStats() {
 
 function renderCurrentView() {
   updateStats();
+  updateBatchBar();
   if (activeTab === 'boxes') {
     renderBoxesView();
   } else if (activeTab === 'all-books') {
@@ -258,6 +255,146 @@ function getBookClaim(boxId, bookId, bookTitle) {
   });
 }
 
+// Multi-select Batch Functions
+function getBookKey(boxId, bookId, bookTitle) {
+  return `${boxId}__${bookId || bookTitle}`;
+}
+
+function toggleBookSelection(boxId, bookId, bookTitle, isSet, checkboxElem) {
+  const key = getBookKey(boxId, bookId, bookTitle);
+  if (selectedBooksMap.has(key)) {
+    selectedBooksMap.delete(key);
+  } else {
+    selectedBooksMap.set(key, { boxId, bookId, bookTitle, isSet });
+  }
+
+  updateBatchBar();
+
+  // Update styles of corresponding item
+  document.querySelectorAll(`[data-book-key="${key}"]`).forEach(el => {
+    el.classList.toggle('selected', selectedBooksMap.has(key));
+    const cb = el.querySelector('.book-checkbox');
+    if (cb) cb.checked = selectedBooksMap.has(key);
+  });
+}
+
+function updateBatchBar() {
+  const bar = document.getElementById('batch-action-bar');
+  const countSpan = document.getElementById('batch-count');
+  const count = selectedBooksMap.size;
+
+  if (countSpan) countSpan.textContent = count;
+  if (bar) {
+    if (count > 0) {
+      bar.classList.remove('hidden');
+    } else {
+      bar.classList.add('hidden');
+    }
+  }
+}
+
+function clearBatchSelection() {
+  selectedBooksMap.clear();
+  updateBatchBar();
+  document.querySelectorAll('.book-item.selected').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.book-checkbox').forEach(cb => cb.checked = false);
+}
+
+function initBatchModal() {
+  const form = document.getElementById('batch-claim-form');
+  if (form) form.addEventListener('submit', handleBatchClaimSubmit);
+}
+
+function openBatchClaimModal() {
+  if (selectedBooksMap.size === 0) return;
+
+  const modal = document.getElementById('batch-claim-modal');
+  const listEl = document.getElementById('batch-modal-list');
+  const countEl = document.getElementById('batch-modal-count');
+
+  countEl.textContent = selectedBooksMap.size;
+  listEl.innerHTML = '';
+
+  const lastName = localStorage.getItem('last_user_name') || '';
+  const lastPhone = localStorage.getItem('last_user_phone') || '';
+  document.getElementById('batch-claim-name').value = lastName;
+  document.getElementById('batch-claim-phone').value = lastPhone;
+
+  let whatsappBooksList = [];
+  let index = 1;
+
+  selectedBooksMap.forEach(item => {
+    const li = document.createElement('li');
+    li.className = 'batch-selected-item';
+    li.innerHTML = `
+      <span><strong>${index}. ${escapeHtml(item.bookTitle)}</strong> ${item.isSet ? '<span class="set-badge">סט</span>' : ''}</span>
+      <span style="color: var(--text-muted); font-size: 0.8rem;">ארגז ${item.boxId}</span>
+    `;
+    listEl.appendChild(li);
+
+    whatsappBooksList.push(`${index}. ${item.bookTitle} (ארגז ${item.boxId})`);
+    index++;
+  });
+
+  // Prepare batch WhatsApp link
+  const btnWa = document.getElementById('batch-whatsapp-link');
+  if (btnWa) {
+    const text = `שלום נפתלי, ראיתי בקטלוג ספרי אמא ואשמח לקבל את הספרים הבאים:\n${whatsappBooksList.join('\n')}\nתודה, ${lastName || ''}`;
+    btnWa.href = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    btnWa.classList.remove('hidden');
+  }
+
+  modal.classList.remove('hidden');
+  document.getElementById('batch-claim-name').focus();
+}
+
+function closeBatchClaimModal() {
+  const modal = document.getElementById('batch-claim-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function handleBatchClaimSubmit(e) {
+  e.preventDefault();
+
+  const userName = document.getElementById('batch-claim-name').value.trim();
+  const phoneOrNote = document.getElementById('batch-claim-phone').value.trim();
+
+  if (!userName || selectedBooksMap.size === 0) return;
+
+  localStorage.setItem('last_user_name', userName);
+  if (phoneOrNote) localStorage.setItem('last_user_phone', phoneOrNote);
+
+  const timestamp = new Date().toISOString();
+  let countSaved = 0;
+
+  selectedBooksMap.forEach(item => {
+    // Remove existing claim for this book if any
+    claimsList = claimsList.filter(c => !(c.boxId == item.boxId && (c.bookId === item.bookId || c.bookTitle === item.bookTitle)));
+
+    const newClaim = {
+      id: 'c_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+      timestamp: timestamp,
+      boxId: item.boxId,
+      bookId: item.bookId,
+      bookTitle: item.bookTitle,
+      userName: userName,
+      userPhone: phoneOrNote,
+      notes: item.isSet ? 'סט שלם' : ''
+    };
+
+    claimsList.push(newClaim);
+    if (googleScriptUrl) sendClaimToCloud(newClaim);
+    countSaved++;
+  });
+
+  saveClaimsToStorage();
+  showToast(`${countSaved} ספרים נרשמו בהצלחה על שם ${userName}!`);
+
+  closeBatchClaimModal();
+  clearBatchSelection();
+  renderCurrentView();
+}
+
 // 1. Render Boxes View
 function renderBoxesView() {
   const container = document.getElementById('boxes-container');
@@ -271,6 +408,7 @@ function renderBoxesView() {
       
       if (activeFilter === 'available' && claim) return false;
       if (activeFilter === 'claimed' && !claim) return false;
+      if (activeFilter === 'sets' && !book.is_set) return false;
 
       if (searchQuery) {
         const matchTitle = (book.title || '').toLowerCase().includes(searchQuery);
@@ -323,7 +461,7 @@ function renderBoxesView() {
             </span>
           </div>
           <span style="font-size: 0.85rem; color: var(--text-muted);">
-            ${box.filteredBooks.length} ספרים
+            ${box.filteredBooks.length} פריטים
           </span>
         </div>
 
@@ -332,17 +470,41 @@ function renderBoxesView() {
             const claim = getBookClaim(box.box_id, book.id, book.title);
             const isClaimed = !!claim;
             const isSet = !!book.is_set;
+            const bookKey = getBookKey(box.box_id, book.id, book.title);
+            const isSelected = selectedBooksMap.has(bookKey);
+            const hasVolumes = Array.isArray(book.volumes) && book.volumes.length > 0;
 
             return `
-              <li class="book-item ${isSet ? 'is-set' : ''} ${isClaimed ? 'claimed' : ''}">
+              <li class="book-item ${isSet ? 'is-set' : ''} ${isClaimed ? 'claimed' : ''} ${isSelected ? 'selected' : ''}" 
+                  data-book-key="${bookKey}"
+                  onclick="${!isClaimed ? `toggleBookSelection(${box.box_id}, '${book.id || ''}', '${escapeForJs(book.title)}', ${isSet}, this)` : ''}">
+                
+                ${!isClaimed ? `
+                  <input type="checkbox" class="book-checkbox" ${isSelected ? 'checked' : ''} 
+                         onclick="event.stopPropagation(); toggleBookSelection(${box.box_id}, '${book.id || ''}', '${escapeForJs(book.title)}', ${isSet}, this)" 
+                         title="סמן לבחירה מרובה">
+                ` : ''}
+
                 <div class="book-info">
                   <div class="book-name">
                     ${escapeHtml(book.title)}
                     ${isSet ? `<span class="set-badge">📦 סט שלם</span>` : ''}
                   </div>
                   ${book.author ? `<div class="book-author">${escapeHtml(book.author)}</div>` : ''}
+                  
+                  ${hasVolumes ? `
+                    <div>
+                      <button type="button" class="volumes-toggle" onclick="event.stopPropagation(); toggleVolumes('v_${book.id}')">
+                        📖 פירוט ${book.volumes.length} הכרכים בסט
+                      </button>
+                      <ul id="v_${book.id}" class="volumes-list hidden" onclick="event.stopPropagation()">
+                        ${book.volumes.map(v => `<li>${escapeHtml(v)}</li>`).join('')}
+                      </ul>
+                    </div>
+                  ` : ''}
                 </div>
-                <div class="book-action">
+
+                <div class="book-action" onclick="event.stopPropagation()">
                   ${isEditMode ? `
                     <button class="btn-edit-item" onclick="openEditBookModal(${box.box_id}, '${book.id}')" title="ערוך פרטי ספר">✏️</button>
                     <button class="btn-delete-item" onclick="deleteBook(${box.box_id}, '${book.id}')" title="מחק ספר">🗑️</button>
@@ -350,7 +512,7 @@ function renderBoxesView() {
 
                   ${isClaimed 
                     ? `<span class="claimed-tag">✓ נבחר ע״י ${escapeHtml(claim.userName)}</span>` 
-                    : `<button class="btn-claim" onclick="openClaimModal(${box.box_id}, '${book.id || ''}', '${escapeForJs(book.title)}')">🖐️ ${isSet ? 'אני רוצה את כל הסט' : 'אני מעוניין/ת'}</button>`
+                    : `<button class="btn-claim" onclick="openClaimModal(${box.box_id}, '${book.id || ''}', '${escapeForJs(book.title)}')">🖐️ ${isSet ? 'קח סט' : 'אני רוצה'}</button>`
                   }
                 </div>
               </li>
@@ -367,6 +529,11 @@ function renderBoxesView() {
 
     container.appendChild(card);
   });
+}
+
+function toggleVolumes(elemId) {
+  const el = document.getElementById(elemId);
+  if (el) el.classList.toggle('hidden');
 }
 
 // 2. Render All Books View
@@ -394,6 +561,7 @@ function renderAllBooksView() {
 
     if (activeFilter === 'available' && claim) return false;
     if (activeFilter === 'claimed' && !claim) return false;
+    if (activeFilter === 'sets' && !book.is_set) return false;
 
     if (searchQuery) {
       const matchTitle = (book.title || '').toLowerCase().includes(searchQuery);
@@ -406,7 +574,7 @@ function renderAllBooksView() {
     return true;
   });
 
-  if (countText) countText.textContent = `מוצגים ${allBooks.length} ספרים`;
+  if (countText) countText.textContent = `מוצגים ${allBooks.length} פריטים`;
 
   if (allBooks.length === 0) {
     tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-muted);">לא נמצאו ספרים תואמים</td></tr>`;
@@ -417,18 +585,29 @@ function renderAllBooksView() {
     const claim = getBookClaim(book.boxId, book.id, book.title);
     const isClaimed = !!claim;
     const isSet = !!book.is_set;
+    const bookKey = getBookKey(book.boxId, book.id, book.title);
+    const isSelected = selectedBooksMap.has(bookKey);
     const thumbUrl = `web_images/${book.imageName}`;
     const origUrl = `original_photos/${book.imageName}`;
 
     const tr = document.createElement('tr');
+    tr.className = isSelected ? 'selected' : '';
+    tr.dataset.bookKey = bookKey;
+
     tr.innerHTML = `
       <td><strong>${book.boxId}</strong></td>
       <td>
         <img class="table-thumb" src="${thumbUrl}" onerror="this.onerror=null; this.src='${origUrl}'" onclick="openLightbox('${book.imageName}', 'ארגז מס׳ ${book.boxId}')" title="לחץ להגדלה" alt="ארגז ${book.boxId}">
       </td>
       <td style="font-weight: 600;">
-        ${escapeHtml(book.title)}
-        ${isSet ? `<span class="set-badge" style="margin-right: 6px;">סט שלם</span>` : ''}
+        <div style="display: flex; align-items: center; gap: 8px;">
+          ${!isClaimed ? `
+            <input type="checkbox" class="book-checkbox" ${isSelected ? 'checked' : ''} 
+                   onclick="event.stopPropagation(); toggleBookSelection(${book.boxId}, '${book.id || ''}', '${escapeForJs(book.title)}', ${isSet}, this)">
+          ` : ''}
+          <span>${escapeHtml(book.title)}</span>
+          ${isSet ? `<span class="set-badge">סט שלם</span>` : ''}
+        </div>
       </td>
       <td style="color: var(--text-muted);">${escapeHtml(book.author || '-')}</td>
       <td>
@@ -575,6 +754,10 @@ function handleClaimSubmit(e) {
 
   claimsList.push(newClaim);
   saveClaimsToStorage();
+
+  // If this book was selected in batch, unselect it
+  selectedBooksMap.delete(getBookKey(boxId, bookId, bookTitle));
+  updateBatchBar();
 
   showToast(`הספר "${bookTitle}" נרשם על שם ${userName}`);
 
@@ -743,7 +926,6 @@ function initLightbox() {
   const viewport = document.getElementById('lightbox-viewport');
   if (!viewport) return;
 
-  // Wheel zoom
   viewport.addEventListener('wheel', (e) => {
     e.preventDefault();
     if (e.deltaY < 0) {
@@ -753,7 +935,6 @@ function initLightbox() {
     }
   }, { passive: false });
 
-  // Pan (drag)
   viewport.addEventListener('mousedown', (e) => {
     if (currentZoom > 1) {
       isPanning = true;
@@ -775,7 +956,6 @@ function initLightbox() {
     viewport.classList.remove('panning');
   });
 
-  // Keyboard controls
   window.addEventListener('keydown', (e) => {
     const modal = document.getElementById('lightbox-modal');
     if (!modal || modal.classList.contains('hidden')) return;
