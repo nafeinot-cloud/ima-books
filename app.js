@@ -750,8 +750,9 @@ function renderBoxesView() {
 
                 <div class="book-info">
                   <div class="book-name">
-                    ${escapeHtml(book.title)}
+                    <span>${escapeHtml(book.title)}</span>
                     ${isSet ? `<span class="set-badge">📦 סט שלם</span>` : ''}
+                    <button type="button" class="btn-edit-book-inline" onclick="event.stopPropagation(); openEditBookModal(${box.box_id}, '${book.id}')" title="ערוך שם ספר או מחבר">✏️</button>
                   </div>
                   ${book.author ? `<div class="book-author">${escapeHtml(book.author)}</div>` : ''}
                   
@@ -768,10 +769,7 @@ function renderBoxesView() {
                 </div>
 
                 <div class="book-action" onclick="event.stopPropagation()">
-                  ${isEditMode ? `
-                    <button class="btn-edit-item" onclick="openEditBookModal(${box.box_id}, '${book.id}')" title="ערוך פרטי ספר">✏️</button>
-                    <button class="btn-delete-item" onclick="deleteBook(${box.box_id}, '${book.id}')" title="מחק ספר">🗑️</button>
-                  ` : ''}
+                  <button class="btn-edit-item" onclick="openEditBookModal(${box.box_id}, '${book.id}')" title="ערוך שם ספר / מחבר">✏️ ערוך</button>
 
                   ${isClaimed 
                     ? `<span class="claimed-tag clickable" onclick="openEditClaimByBook(${box.box_id}, '${book.id || ''}', '${escapeForJs(book.title)}')" title="לחץ לעריכת פרטי המבקש / החלפת שם / ביטול">✓ נבחר ע״י ${escapeHtml(claim.userName)} <span style="font-size:0.75rem;opacity:0.8;margin-right:4px;">✏️</span></span>` 
@@ -876,6 +874,7 @@ function renderAllBooksView() {
           ` : ''}
           <span>${escapeHtml(book.title)}</span>
           ${isSet ? `<span class="set-badge">סט שלם</span>` : ''}
+          <button type="button" class="btn-edit-book-inline" onclick="event.stopPropagation(); openEditBookModal(${book.boxId}, '${book.id}')" title="ערוך שם ספר או מחבר">✏️</button>
         </div>
       </td>
       <td style="color: var(--text-muted);">${escapeHtml(book.author || '-')}</td>
@@ -886,14 +885,11 @@ function renderAllBooksView() {
         }
       </td>
       <td>
-        <div style="display: flex; gap: 4px; align-items: center;">
-          ${isEditMode ? `
-            <button class="btn-edit-item" onclick="openEditBookModal(${book.boxId}, '${book.id}')">✏️</button>
-            <button class="btn-delete-item" onclick="deleteBook(${book.boxId}, '${book.id}')">🗑️</button>
-          ` : ''}
+        <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap;">
+          <button class="btn-action" style="font-size: 0.8rem; padding: 3px 8px;" onclick="openEditBookModal(${book.boxId}, '${book.id}')" title="ערוך שם ספר ומחבר">✏️ ערוך ספר</button>
 
           ${isClaimed 
-            ? `<button class="btn-action" style="font-size: 0.8rem; padding: 3px 8px;" onclick="openEditClaimByBook(${book.boxId}, '${book.id || ''}', '${escapeForJs(book.title)}')">✏️ עריכה / שינוי</button>` 
+            ? `<button class="btn-action" style="font-size: 0.8rem; padding: 3px 8px;" onclick="openEditClaimByBook(${book.boxId}, '${book.id || ''}', '${escapeForJs(book.title)}')">👤 שׁנה בוחר</button>` 
             : `<button class="btn-claim" onclick="openClaimModal(${book.boxId}, '${book.id || ''}', '${escapeForJs(book.title)}')">🖐️ ${isSet ? 'קח סט' : 'אני רוצה'}</button>`
           }
         </div>
@@ -1156,10 +1152,13 @@ function openEditBookModal(boxId, bookId) {
   document.getElementById('edit-type').value = 'book';
   document.getElementById('edit-box-id').value = boxId;
   document.getElementById('edit-book-id').value = bookId;
-  document.getElementById('edit-modal-title').textContent = `עריכת ספר (ארגז ${boxId})`;
+  document.getElementById('edit-modal-title').textContent = `עריכת שם ספר (ארגז ${boxId})`;
 
   document.getElementById('edit-book-fields').classList.remove('hidden');
   document.getElementById('edit-box-fields').classList.add('hidden');
+
+  const btnDel = document.getElementById('btn-delete-from-edit-modal');
+  if (btnDel) btnDel.style.display = 'inline-block';
 
   document.getElementById('edit-book-title').value = book.title || '';
   document.getElementById('edit-book-author').value = book.author || '';
@@ -1180,6 +1179,9 @@ function openEditBoxModal(boxId) {
   document.getElementById('edit-book-fields').classList.add('hidden');
   document.getElementById('edit-box-fields').classList.remove('hidden');
 
+  const btnDel = document.getElementById('btn-delete-from-edit-modal');
+  if (btnDel) btnDel.style.display = 'none';
+
   document.getElementById('edit-box-category').value = box.category || '';
 
   document.getElementById('edit-modal').classList.remove('hidden');
@@ -1188,6 +1190,15 @@ function openEditBoxModal(boxId) {
 
 function closeEditModal() {
   document.getElementById('edit-modal').classList.add('hidden');
+}
+
+function deleteBookFromModal() {
+  const boxId = document.getElementById('edit-box-id').value;
+  const bookId = document.getElementById('edit-book-id').value;
+  if (!boxId || !bookId) return;
+
+  closeEditModal();
+  deleteBook(boxId, bookId);
 }
 
 function handleEditSubmit(e) {
@@ -1201,17 +1212,33 @@ function handleEditSubmit(e) {
     const newAuthor = document.getElementById('edit-book-author').value.trim();
     const isSet = document.getElementById('edit-book-is-set').checked;
 
+    if (!newTitle) return;
+
     const box = catalogData.find(b => b.box_id == boxId);
     if (box) {
       const book = (box.books || []).find(b => b.id === bookId);
       if (book) {
+        const oldTitle = book.title;
         book.title = newTitle;
         book.author = newAuthor;
         book.is_set = isSet;
+
         saveCatalogEdits({ book: { id: bookId, title: newTitle, author: newAuthor, is_set: isSet } });
+
+        // Update any existing claims that matched the old title
+        let claimsUpdated = false;
+        claimsList.forEach(c => {
+          if (c.boxId == boxId && (c.bookId === bookId || c.bookTitle === oldTitle)) {
+            c.bookTitle = newTitle;
+            c.bookId = bookId;
+            claimsUpdated = true;
+            if (googleScriptUrl) sendClaimToCloud(c);
+          }
+        });
+        if (claimsUpdated) saveClaimsToStorage();
       }
     }
-    showToast('פרטי הספר עודכנו');
+    showToast(`שם הספר עודכן בהצלחה: "${newTitle}"`);
   } else if (type === 'box') {
     const newCategory = document.getElementById('edit-box-category').value.trim();
     const box = catalogData.find(b => b.box_id == boxId);

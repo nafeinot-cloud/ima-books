@@ -724,7 +724,30 @@ body {
 }
 
 /* Edit icons */
-.btn-edit-item, .btn-delete-item {
+.btn-edit-item {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: var(--text-dark);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-edit-item:hover {
+  background: #f1f5f9;
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.btn-delete-item {
   background: none;
   border: none;
   cursor: pointer;
@@ -735,14 +758,30 @@ body {
   transition: opacity 0.2s, background 0.2s;
 }
 
-.btn-edit-item:hover {
-  opacity: 1;
-  background: var(--primary-light);
-}
-
 .btn-delete-item:hover {
   opacity: 1;
   background: var(--danger-light);
+}
+
+.btn-edit-book-inline {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 5px;
+  font-size: 0.85rem;
+  opacity: 0.65;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  vertical-align: middle;
+  margin-right: 4px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn-edit-book-inline:hover {
+  opacity: 1;
+  background: #e2e8f0;
+  transform: scale(1.15);
 }
 
 /* Claim Button */

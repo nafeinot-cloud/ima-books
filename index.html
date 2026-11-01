@@ -312,8 +312,9 @@
           </div>
         </div>
 
-        <div class="modal-actions">
+        <div class="modal-actions" style="flex-wrap: wrap;">
           <button type="submit" class="btn-submit">💾 שמור שינויים</button>
+          <button type="button" class="btn-action" id="btn-delete-from-edit-modal" style="color: var(--danger); border-color: #fca5a5; display: none;" onclick="deleteBookFromModal()">🗑️ מחק ספר מהארגז</button>
           <button type="button" class="btn-action" onclick="closeEditModal()">ביטול</button>
         </div>
       </form>
