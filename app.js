@@ -4,7 +4,15 @@ let claimsList = [];
 let activeTab = 'boxes';
 let activeFilter = 'all';
 let searchQuery = '';
+let isEditMode = false;
 let googleScriptUrl = localStorage.getItem('google_sheet_script_url') || '';
+
+// Lightbox state
+let currentZoom = 1;
+let currentRotation = 0;
+let isPanning = false;
+let startX = 0, startY = 0;
+let translateX = 0, translateY = 0;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -12,18 +20,18 @@ document.addEventListener('DOMContentLoaded', () => {
   initNavigation();
   initSearchAndFilter();
   initModal();
+  initEditModal();
+  initLightbox();
   initSettings();
+  initHeaderActions();
   loadData();
 });
 
 function initStorage() {
   try {
     const saved = localStorage.getItem('family_book_claims');
-    if (saved) {
-      claimsList = JSON.parse(saved);
-    }
+    if (saved) claimsList = JSON.parse(saved);
   } catch (e) {
-    console.error('Error loading claims from storage', e);
     claimsList = [];
   }
 }
@@ -32,33 +40,98 @@ function saveClaimsToStorage() {
   localStorage.setItem('family_book_claims', JSON.stringify(claimsList));
 }
 
-// Load catalog & cloud data
+// Load catalog & apply user edits
 function loadData() {
   if (typeof BOOKS_DATA !== 'undefined' && Array.isArray(BOOKS_DATA)) {
-    catalogData = BOOKS_DATA;
+    // Deep clone to allow in-memory edits
+    catalogData = JSON.parse(JSON.stringify(BOOKS_DATA));
   } else {
     catalogData = [];
   }
 
-  // Load custom added books from localStorage
-  try {
-    const customBooks = JSON.parse(localStorage.getItem('custom_added_books') || '[]');
-    customBooks.forEach(cb => {
-      const box = catalogData.find(b => b.box_id === cb.box_id);
-      if (box) {
-        if (!box.books.some(b => b.id === cb.id)) {
-          box.books.push(cb);
+  // Detect sets automatically if title mentions "סט" or "כרכים"
+  catalogData.forEach(box => {
+    (box.books || []).forEach(book => {
+      if (!book.is_set) {
+        const t = (book.title || '') + ' ' + (book.author || '');
+        if (t.includes('סט ') || t.includes(' כרכים') || t.includes('חלקים') || t.includes('ש"ס') || t.includes('כרך א-') || t.includes('מהדורת שבתי פרנקל')) {
+          book.is_set = true;
         }
       }
     });
-  } catch (e) {}
+  });
+
+  // Apply saved edits from localStorage
+  try {
+    const savedEdits = JSON.parse(localStorage.getItem('catalog_edits') || '{}');
+    if (savedEdits.boxes) {
+      Object.keys(savedEdits.boxes).forEach(boxId => {
+        const box = catalogData.find(b => b.box_id == boxId);
+        if (box && savedEdits.boxes[boxId].category !== undefined) {
+          box.category = savedEdits.boxes[boxId].category;
+        }
+      });
+    }
+
+    if (savedEdits.books) {
+      Object.keys(savedEdits.books).forEach(bookId => {
+        const edit = savedEdits.books[bookId];
+        catalogData.forEach(box => {
+          const book = (box.books || []).find(b => b.id === bookId);
+          if (book) {
+            if (edit.deleted) {
+              box.books = box.books.filter(b => b.id !== bookId);
+            } else {
+              if (edit.title !== undefined) book.title = edit.title;
+              if (edit.author !== undefined) book.author = edit.author;
+              if (edit.is_set !== undefined) book.is_set = edit.is_set;
+            }
+          }
+        });
+      });
+    }
+
+    // Custom added books
+    if (Array.isArray(savedEdits.customBooks)) {
+      savedEdits.customBooks.forEach(cb => {
+        const box = catalogData.find(b => b.box_id === cb.box_id);
+        if (box && !box.books.some(b => b.id === cb.id)) {
+          box.books.push(cb);
+        }
+      });
+    }
+  } catch (e) {
+    console.warn('Error loading saved edits', e);
+  }
 
   updateStats();
   renderCurrentView();
 
-  // If cloud sync configured, sync in background
   if (googleScriptUrl) {
     syncWithCloud(false);
+  }
+}
+
+function saveCatalogEdits(editsObj) {
+  try {
+    let current = JSON.parse(localStorage.getItem('catalog_edits') || '{}');
+    if (!current.boxes) current.boxes = {};
+    if (!current.books) current.books = {};
+    if (!current.customBooks) current.customBooks = [];
+
+    if (editsObj.box) {
+      current.boxes[editsObj.box.id] = { category: editsObj.box.category };
+    }
+    if (editsObj.book) {
+      current.books[editsObj.book.id] = editsObj.book;
+    }
+    if (editsObj.newBook) {
+      current.customBooks.push(editsObj.newBook);
+    }
+
+    localStorage.setItem('catalog_edits', JSON.stringify(current));
+  } catch (e) {
+    console.error('Failed to save edits', e);
   }
 }
 
@@ -66,22 +139,17 @@ function loadData() {
 function initNavigation() {
   const tabBtns = document.querySelectorAll('.tab-btn');
   tabBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const target = btn.dataset.tab;
-      switchTab(target);
-    });
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
 }
 
 function switchTab(tabName) {
   activeTab = tabName;
 
-  // Update tab buttons
   document.querySelectorAll('.tab-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.tab === tabName);
   });
 
-  // Toggle views
   document.querySelectorAll('.tab-view').forEach(view => {
     view.classList.add('hidden');
   });
@@ -89,7 +157,6 @@ function switchTab(tabName) {
   const activeView = document.getElementById(`view-${tabName}`);
   if (activeView) activeView.classList.remove('hidden');
 
-  // Toggle search controls visibility
   const controls = document.getElementById('main-controls');
   if (controls) {
     controls.style.display = (tabName === 'boxes' || tabName === 'all-books') ? 'flex' : 'none';
@@ -118,16 +185,33 @@ function initSearchAndFilter() {
     });
   });
 
-  // Summary user filter
   const summaryUserFilter = document.getElementById('summary-filter-user');
   if (summaryUserFilter) {
     summaryUserFilter.addEventListener('input', renderSummaryView);
   }
 
-  // Export CSV button
   const btnExportCsv = document.getElementById('btn-export-csv');
   if (btnExportCsv) {
     btnExportCsv.addEventListener('click', exportToCSV);
+  }
+}
+
+// Header Actions (Edit Mode & Download Data)
+function initHeaderActions() {
+  const btnEdit = document.getElementById('btn-toggle-edit-mode');
+  if (btnEdit) {
+    btnEdit.addEventListener('click', () => {
+      isEditMode = !isEditMode;
+      btnEdit.classList.toggle('active', isEditMode);
+      btnEdit.textContent = isEditMode ? '✓ מצב עריכה (פעיל)' : '✏️ מצב עריכה (כבוי)';
+      showToast(isEditMode ? 'מצב עריכה הופעל: כעת ניתן לערוך ספרים, שמות וארגזים' : 'מצב עריכה כבוי');
+      renderCurrentView();
+    });
+  }
+
+  const btnDownload = document.getElementById('btn-download-updated-data');
+  if (btnDownload) {
+    btnDownload.addEventListener('click', downloadUpdatedData);
   }
 }
 
@@ -153,7 +237,6 @@ function updateStats() {
   document.getElementById('badge-summary-count').textContent = claimedCount;
 }
 
-// Render based on active tab
 function renderCurrentView() {
   updateStats();
   if (activeTab === 'boxes') {
@@ -165,7 +248,6 @@ function renderCurrentView() {
   }
 }
 
-// Check if a book is claimed
 function getBookClaim(boxId, bookId, bookTitle) {
   return claimsList.find(c => {
     if (c.boxId == boxId) {
@@ -184,15 +266,12 @@ function renderBoxesView() {
   container.innerHTML = '';
 
   let filteredBoxes = catalogData.map(box => {
-    // Filter books inside the box
     const books = (box.books || []).filter(book => {
       const claim = getBookClaim(box.box_id, book.id, book.title);
       
-      // Filter status
       if (activeFilter === 'available' && claim) return false;
       if (activeFilter === 'claimed' && !claim) return false;
 
-      // Filter search
       if (searchQuery) {
         const matchTitle = (book.title || '').toLowerCase().includes(searchQuery);
         const matchAuthor = (book.author || '').toLowerCase().includes(searchQuery);
@@ -208,7 +287,6 @@ function renderBoxesView() {
     return { ...box, filteredBooks: books };
   });
 
-  // Filter out empty boxes when searching or filtering
   if (searchQuery || activeFilter !== 'all') {
     filteredBoxes = filteredBoxes.filter(box => box.filteredBooks.length > 0);
   }
@@ -229,18 +307,20 @@ function renderBoxesView() {
     card.className = 'box-card';
 
     const imageWeb = `web_images/${box.image_name}`;
-    const imageOriginal = box.image_name;
+    const imageOriginal = `original_photos/${box.image_name}`;
 
     card.innerHTML = `
-      <div class="box-image-wrap" onclick="openLightbox('${imageOriginal}', 'ארגז מס׳ ${box.box_id}: ${box.category || ''}')">
+      <div class="box-image-wrap" onclick="openLightbox('${box.image_name}', 'ארגז מס׳ ${box.box_id}: ${box.category || ''}')">
         <img class="box-img" src="${imageWeb}" onerror="this.onerror=null; this.src='${imageOriginal}'" alt="ארגז ${box.box_id}" loading="lazy">
-        <div class="zoom-overlay">🔍 לחץ לתמונה מלאה</div>
+        <div class="zoom-overlay">🔍 לחץ להגדלה וזום מלא</div>
       </div>
       <div class="box-content">
         <div class="box-header">
           <div class="box-title">
             <span>📦 ארגז מס׳ ${box.box_id}</span>
-            ${box.category ? `<span class="box-badge">${box.category}</span>` : ''}
+            <span class="box-badge" onclick="${isEditMode ? `openEditBoxModal(${box.box_id})` : ''}" title="${isEditMode ? 'לחץ לעריכת נושא הארגז' : ''}">
+              ${box.category || 'כללי'} ${isEditMode ? '✏️' : ''}
+            </span>
           </div>
           <span style="font-size: 0.85rem; color: var(--text-muted);">
             ${box.filteredBooks.length} ספרים
@@ -251,17 +331,26 @@ function renderBoxesView() {
           ${box.filteredBooks.map(book => {
             const claim = getBookClaim(box.box_id, book.id, book.title);
             const isClaimed = !!claim;
+            const isSet = !!book.is_set;
 
             return `
-              <li class="book-item ${isClaimed ? 'claimed' : ''}">
+              <li class="book-item ${isSet ? 'is-set' : ''} ${isClaimed ? 'claimed' : ''}">
                 <div class="book-info">
-                  <div class="book-name">${escapeHtml(book.title)}</div>
+                  <div class="book-name">
+                    ${escapeHtml(book.title)}
+                    ${isSet ? `<span class="set-badge">📦 סט שלם</span>` : ''}
+                  </div>
                   ${book.author ? `<div class="book-author">${escapeHtml(book.author)}</div>` : ''}
                 </div>
                 <div class="book-action">
+                  ${isEditMode ? `
+                    <button class="btn-edit-item" onclick="openEditBookModal(${box.box_id}, '${book.id}')" title="ערוך פרטי ספר">✏️</button>
+                    <button class="btn-delete-item" onclick="deleteBook(${box.box_id}, '${book.id}')" title="מחק ספר">🗑️</button>
+                  ` : ''}
+
                   ${isClaimed 
                     ? `<span class="claimed-tag">✓ נבחר ע״י ${escapeHtml(claim.userName)}</span>` 
-                    : `<button class="btn-claim" onclick="openClaimModal(${box.box_id}, '${book.id || ''}', '${escapeForJs(book.title)}')">🖐️ אני מעוניין/ת</button>`
+                    : `<button class="btn-claim" onclick="openClaimModal(${box.box_id}, '${book.id || ''}', '${escapeForJs(book.title)}')">🖐️ ${isSet ? 'אני רוצה את כל הסט' : 'אני מעוניין/ת'}</button>`
                   }
                 </div>
               </li>
@@ -300,7 +389,6 @@ function renderAllBooksView() {
     });
   });
 
-  // Apply filters
   allBooks = allBooks.filter(book => {
     const claim = getBookClaim(book.boxId, book.id, book.title);
 
@@ -318,9 +406,7 @@ function renderAllBooksView() {
     return true;
   });
 
-  if (countText) {
-    countText.textContent = `מוצגים ${allBooks.length} ספרים`;
-  }
+  if (countText) countText.textContent = `מוצגים ${allBooks.length} ספרים`;
 
   if (allBooks.length === 0) {
     tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-muted);">לא נמצאו ספרים תואמים</td></tr>`;
@@ -330,15 +416,20 @@ function renderAllBooksView() {
   allBooks.forEach(book => {
     const claim = getBookClaim(book.boxId, book.id, book.title);
     const isClaimed = !!claim;
+    const isSet = !!book.is_set;
     const thumbUrl = `web_images/${book.imageName}`;
+    const origUrl = `original_photos/${book.imageName}`;
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><strong>${book.boxId}</strong></td>
       <td>
-        <img class="table-thumb" src="${thumbUrl}" onerror="this.onerror=null; this.src='${book.imageName}'" onclick="openLightbox('${book.imageName}', 'ארגז מס׳ ${book.boxId}')" title="לחץ להגדלה" alt="ארגז ${book.boxId}">
+        <img class="table-thumb" src="${thumbUrl}" onerror="this.onerror=null; this.src='${origUrl}'" onclick="openLightbox('${book.imageName}', 'ארגז מס׳ ${book.boxId}')" title="לחץ להגדלה" alt="ארגז ${book.boxId}">
       </td>
-      <td style="font-weight: 600;">${escapeHtml(book.title)}</td>
+      <td style="font-weight: 600;">
+        ${escapeHtml(book.title)}
+        ${isSet ? `<span class="set-badge" style="margin-right: 6px;">סט שלם</span>` : ''}
+      </td>
       <td style="color: var(--text-muted);">${escapeHtml(book.author || '-')}</td>
       <td>
         ${isClaimed 
@@ -347,17 +438,24 @@ function renderAllBooksView() {
         }
       </td>
       <td>
-        ${isClaimed 
-          ? `<button class="btn-action" style="font-size: 0.8rem; padding: 3px 8px;" onclick="openClaimModal(${book.boxId}, '${book.id || ''}', '${escapeForJs(book.title)}')">פרטים / שינוי</button>` 
-          : `<button class="btn-claim" onclick="openClaimModal(${book.boxId}, '${book.id || ''}', '${escapeForJs(book.title)}')">🖐️ אני מעוניין/ת</button>`
-        }
+        <div style="display: flex; gap: 4px; align-items: center;">
+          ${isEditMode ? `
+            <button class="btn-edit-item" onclick="openEditBookModal(${book.boxId}, '${book.id}')">✏️</button>
+            <button class="btn-delete-item" onclick="deleteBook(${book.boxId}, '${book.id}')">🗑️</button>
+          ` : ''}
+
+          ${isClaimed 
+            ? `<button class="btn-action" style="font-size: 0.8rem; padding: 3px 8px;" onclick="openClaimModal(${book.boxId}, '${book.id || ''}', '${escapeForJs(book.title)}')">פרטים / שינוי</button>` 
+            : `<button class="btn-claim" onclick="openClaimModal(${book.boxId}, '${book.id || ''}', '${escapeForJs(book.title)}')">🖐️ ${isSet ? 'קח סט' : 'אני רוצה'}</button>`
+          }
+        </div>
       </td>
     `;
     tbody.appendChild(tr);
   });
 }
 
-// 3. Render Summary View (Who took what)
+// 3. Render Summary View
 function renderSummaryView() {
   const tbody = document.getElementById('summary-tbody');
   if (!tbody) return;
@@ -371,7 +469,6 @@ function renderSummaryView() {
     list = list.filter(c => (c.userName || '').toLowerCase().includes(userQuery));
   }
 
-  // Sort descending by date
   list.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
   if (list.length === 0) {
@@ -383,13 +480,14 @@ function renderSummaryView() {
     const box = catalogData.find(b => b.box_id == c.boxId);
     const imageName = box ? box.image_name : '';
     const thumbUrl = imageName ? `web_images/${imageName}` : '';
+    const origUrl = imageName ? `original_photos/${imageName}` : '';
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td style="font-size: 0.82rem; color: var(--text-muted);">${formatDate(c.timestamp)}</td>
       <td><strong>ארגז ${c.boxId}</strong></td>
       <td>
-        ${imageName ? `<img class="table-thumb" src="${thumbUrl}" onerror="this.onerror=null; this.src='${imageName}'" onclick="openLightbox('${imageName}', 'ארגז מס׳ ${c.boxId}')" title="לחץ להגדלה">` : '-'}
+        ${imageName ? `<img class="table-thumb" src="${thumbUrl}" onerror="this.onerror=null; this.src='${origUrl}'" onclick="openLightbox('${imageName}', 'ארגז מס׳ ${c.boxId}')" title="לחץ להגדלה">` : '-'}
       </td>
       <td style="font-weight: 600;">${escapeHtml(c.bookTitle)}</td>
       <td style="color: var(--primary); font-weight: 700;">${escapeHtml(c.userName)}</td>
@@ -408,19 +506,13 @@ function initModal() {
   const closeBtn = document.getElementById('btn-close-modal');
   const form = document.getElementById('claim-form');
 
-  if (closeBtn) {
-    closeBtn.addEventListener('click', closeModal);
-  }
-
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
   if (modal) {
     modal.addEventListener('click', (e) => {
       if (e.target === modal) closeModal();
     });
   }
-
-  if (form) {
-    form.addEventListener('submit', handleClaimSubmit);
-  }
+  if (form) form.addEventListener('submit', handleClaimSubmit);
 }
 
 function openClaimModal(boxId, bookId, bookTitle) {
@@ -432,13 +524,11 @@ function openClaimModal(boxId, bookId, bookTitle) {
   document.getElementById('modal-book-title').textContent = bookTitle;
   document.getElementById('modal-box-info').textContent = `ארגז מס׳ ${boxId}`;
 
-  // Pre-fill last used name
   const lastName = localStorage.getItem('last_user_name') || '';
   const lastPhone = localStorage.getItem('last_user_phone') || '';
   document.getElementById('claim-name').value = lastName;
   document.getElementById('claim-phone').value = lastPhone;
 
-  // Existing claim details if any
   const existing = getBookClaim(boxId, bookId, bookTitle);
   if (existing) {
     document.getElementById('claim-name').value = existing.userName || '';
@@ -467,11 +557,9 @@ function handleClaimSubmit(e) {
 
   if (!userName) return;
 
-  // Remember for convenience
   localStorage.setItem('last_user_name', userName);
   if (phoneOrNote) localStorage.setItem('last_user_phone', phoneOrNote);
 
-  // Remove existing claim for this book if any
   claimsList = claimsList.filter(c => !(c.boxId == boxId && (c.bookId === bookId || c.bookTitle === bookTitle)));
 
   const newClaim = {
@@ -488,10 +576,8 @@ function handleClaimSubmit(e) {
   claimsList.push(newClaim);
   saveClaimsToStorage();
 
-  // Show toast
   showToast(`הספר "${bookTitle}" נרשם על שם ${userName}`);
 
-  // Send to Google Sheets if configured
   if (googleScriptUrl) {
     sendClaimToCloud(newClaim);
   }
@@ -508,6 +594,105 @@ function removeClaim(claimId) {
   claimsList = claimsList.filter(c => c.id !== claimId);
   saveClaimsToStorage();
   showToast('הבחירה בוטלה');
+  renderCurrentView();
+}
+
+// Edit Modal Functions
+function initEditModal() {
+  const form = document.getElementById('edit-form');
+  if (form) form.addEventListener('submit', handleEditSubmit);
+}
+
+function openEditBookModal(boxId, bookId) {
+  const box = catalogData.find(b => b.box_id == boxId);
+  if (!box) return;
+  const book = (box.books || []).find(b => b.id === bookId);
+  if (!book) return;
+
+  document.getElementById('edit-type').value = 'book';
+  document.getElementById('edit-box-id').value = boxId;
+  document.getElementById('edit-book-id').value = bookId;
+  document.getElementById('edit-modal-title').textContent = `עריכת ספר (ארגז ${boxId})`;
+
+  document.getElementById('edit-book-fields').classList.remove('hidden');
+  document.getElementById('edit-box-fields').classList.add('hidden');
+
+  document.getElementById('edit-book-title').value = book.title || '';
+  document.getElementById('edit-book-author').value = book.author || '';
+  document.getElementById('edit-book-is-set').checked = !!book.is_set;
+
+  document.getElementById('edit-modal').classList.remove('hidden');
+  document.getElementById('edit-book-title').focus();
+}
+
+function openEditBoxModal(boxId) {
+  const box = catalogData.find(b => b.box_id == boxId);
+  if (!box) return;
+
+  document.getElementById('edit-type').value = 'box';
+  document.getElementById('edit-box-id').value = boxId;
+  document.getElementById('edit-modal-title').textContent = `עריכת תיאור ארגז מס׳ ${boxId}`;
+
+  document.getElementById('edit-book-fields').classList.add('hidden');
+  document.getElementById('edit-box-fields').classList.remove('hidden');
+
+  document.getElementById('edit-box-category').value = box.category || '';
+
+  document.getElementById('edit-modal').classList.remove('hidden');
+  document.getElementById('edit-box-category').focus();
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.add('hidden');
+}
+
+function handleEditSubmit(e) {
+  e.preventDefault();
+  const type = document.getElementById('edit-type').value;
+  const boxId = document.getElementById('edit-box-id').value;
+
+  if (type === 'book') {
+    const bookId = document.getElementById('edit-book-id').value;
+    const newTitle = document.getElementById('edit-book-title').value.trim();
+    const newAuthor = document.getElementById('edit-book-author').value.trim();
+    const isSet = document.getElementById('edit-book-is-set').checked;
+
+    const box = catalogData.find(b => b.box_id == boxId);
+    if (box) {
+      const book = (box.books || []).find(b => b.id === bookId);
+      if (book) {
+        book.title = newTitle;
+        book.author = newAuthor;
+        book.is_set = isSet;
+        saveCatalogEdits({ book: { id: bookId, title: newTitle, author: newAuthor, is_set: isSet } });
+      }
+    }
+    showToast('פרטי הספר עודכנו');
+  } else if (type === 'box') {
+    const newCategory = document.getElementById('edit-box-category').value.trim();
+    const box = catalogData.find(b => b.box_id == boxId);
+    if (box) {
+      box.category = newCategory;
+      saveCatalogEdits({ box: { id: boxId, category: newCategory } });
+    }
+    showToast('תיאור הארגז עודכן');
+  }
+
+  closeEditModal();
+  renderCurrentView();
+}
+
+function deleteBook(boxId, bookId) {
+  const box = catalogData.find(b => b.box_id == boxId);
+  if (!box) return;
+  const book = (box.books || []).find(b => b.id === bookId);
+  const title = book ? book.title : 'ספר זה';
+
+  if (!confirm(`האם למחוק את "${title}" מרשימת הארגז?`)) return;
+
+  box.books = box.books.filter(b => b.id !== bookId);
+  saveCatalogEdits({ book: { id: bookId, deleted: true } });
+  showToast('הספר נמחק מהארגז');
   renderCurrentView();
 }
 
@@ -529,40 +714,142 @@ function addCustomBook(boxId) {
   if (box) {
     if (!box.books) box.books = [];
     box.books.push(newBook);
-
-    // Save custom books in localStorage
-    try {
-      const customBooks = JSON.parse(localStorage.getItem('custom_added_books') || '[]');
-      customBooks.push(newBook);
-      localStorage.setItem('custom_added_books', JSON.stringify(customBooks));
-    } catch (e) {}
+    saveCatalogEdits({ newBook: newBook });
   }
 
   input.value = '';
   renderCurrentView();
-
-  // Directly open claim modal for this new book
   openClaimModal(boxId, newBook.id, newBook.title);
 }
 
-// Lightbox
-function openLightbox(imgSrc, caption) {
+// Download Updated books_data.js
+function downloadUpdatedData() {
+  const cleanData = JSON.stringify(catalogData, null, 2);
+  const jsContent = `const BOOKS_DATA = ${cleanData};\n`;
+  const blob = new Blob([jsContent], { type: 'application/javascript;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'books_data.js';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('קובץ books_data.js המעודכן הורד בהצלחה!');
+}
+
+// Lightbox with Zoom, Rotate, Pan & Wheel
+function initLightbox() {
+  const viewport = document.getElementById('lightbox-viewport');
+  if (!viewport) return;
+
+  // Wheel zoom
+  viewport.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    if (e.deltaY < 0) {
+      zoomIn(0.2);
+    } else {
+      zoomOut(0.2);
+    }
+  }, { passive: false });
+
+  // Pan (drag)
+  viewport.addEventListener('mousedown', (e) => {
+    if (currentZoom > 1) {
+      isPanning = true;
+      startX = e.clientX - translateX;
+      startY = e.clientY - translateY;
+      viewport.classList.add('panning');
+    }
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isPanning) return;
+    translateX = e.clientX - startX;
+    translateY = e.clientY - startY;
+    applyImageTransform();
+  });
+
+  window.addEventListener('mouseup', () => {
+    isPanning = false;
+    viewport.classList.remove('panning');
+  });
+
+  // Keyboard controls
+  window.addEventListener('keydown', (e) => {
+    const modal = document.getElementById('lightbox-modal');
+    if (!modal || modal.classList.contains('hidden')) return;
+
+    if (e.key === 'Escape') closeLightbox();
+    if (e.key === '+' || e.key === '=') zoomIn();
+    if (e.key === '-' || e.key === '_') zoomOut();
+    if (e.key === 'r' || e.key === 'R') rotateImage();
+    if (e.key === '0') resetZoom();
+  });
+}
+
+function openLightbox(imageName, caption) {
   const modal = document.getElementById('lightbox-modal');
   const img = document.getElementById('lightbox-img');
   const cap = document.getElementById('lightbox-caption');
+  const extLink = document.getElementById('lightbox-external-link');
+
+  resetZoom();
+
+  const webUrl = `web_images/${imageName}`;
+  const origUrl = `original_photos/${imageName}`;
 
   img.onerror = () => {
-    if (!img.src.includes('web_images/')) {
-      img.src = 'web_images/' + imgSrc;
+    if (img.src.includes('web_images/')) {
+      img.src = origUrl;
     }
   };
-  img.src = imgSrc;
+
+  img.src = webUrl;
   cap.textContent = caption || '';
+  if (extLink) extLink.href = origUrl;
+
   modal.classList.remove('hidden');
 }
 
-function closeLightbox(e) {
-  document.getElementById('lightbox-modal').classList.add('hidden');
+function closeLightbox() {
+  const modal = document.getElementById('lightbox-modal');
+  if (modal) modal.classList.add('hidden');
+  resetZoom();
+}
+
+function applyImageTransform() {
+  const container = document.getElementById('lightbox-container');
+  if (container) {
+    container.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentZoom}) rotate(${currentRotation}deg)`;
+  }
+}
+
+function zoomIn(step = 0.3) {
+  currentZoom = Math.min(currentZoom + step, 4.0);
+  applyImageTransform();
+}
+
+function zoomOut(step = 0.3) {
+  currentZoom = Math.max(currentZoom - step, 0.5);
+  if (currentZoom <= 1) {
+    translateX = 0;
+    translateY = 0;
+  }
+  applyImageTransform();
+}
+
+function rotateImage() {
+  currentRotation = (currentRotation + 90) % 360;
+  applyImageTransform();
+}
+
+function resetZoom() {
+  currentZoom = 1;
+  currentRotation = 0;
+  translateX = 0;
+  translateY = 0;
+  applyImageTransform();
 }
 
 // WhatsApp Link
@@ -575,7 +862,6 @@ function updateWhatsAppLink(boxId, bookTitle, userName) {
   btn.classList.remove('hidden');
 }
 
-// Toast
 function showToast(msg) {
   const toast = document.getElementById('toast');
   toast.textContent = msg;
@@ -586,9 +872,7 @@ function showToast(msg) {
 // Settings & Cloud Sync
 function initSettings() {
   const urlInput = document.getElementById('settings-sheet-url');
-  if (urlInput && googleScriptUrl) {
-    urlInput.value = googleScriptUrl;
-  }
+  if (urlInput && googleScriptUrl) urlInput.value = googleScriptUrl;
 
   const btnSave = document.getElementById('btn-save-settings');
   if (btnSave) {
@@ -596,9 +880,7 @@ function initSettings() {
       googleScriptUrl = document.getElementById('settings-sheet-url').value.trim();
       localStorage.setItem('google_sheet_script_url', googleScriptUrl);
       showToast('ההגדרות נשמרו בהצלחה!');
-      if (googleScriptUrl) {
-        syncWithCloud(true);
-      }
+      if (googleScriptUrl) syncWithCloud(true);
     });
   }
 
@@ -616,9 +898,7 @@ function sendClaimToCloud(claim) {
     mode: 'no-cors',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(claim)
-  }).catch(err => {
-    console.warn('Cloud sync error (fallback to local)', err);
-  });
+  }).catch(err => console.warn('Cloud sync error', err));
 }
 
 function syncWithCloud(notify) {
@@ -628,7 +908,6 @@ function syncWithCloud(notify) {
     .then(res => res.json())
     .then(data => {
       if (data && data.status === 'success' && Array.isArray(data.data)) {
-        // Merge cloud claims with local
         data.data.forEach(cloudItem => {
           const exists = claimsList.some(c => 
             c.boxId == cloudItem.boxId && 
@@ -653,7 +932,6 @@ function syncWithCloud(notify) {
       }
     })
     .catch(err => {
-      console.warn('Fetch from cloud error', err);
       if (notify) showToast('שגיאה בסנכרון עם Google Sheets');
     });
 }
@@ -665,7 +943,7 @@ function exportToCSV() {
     return;
   }
 
-  let csvContent = '\uFEFF'; // UTF-8 BOM for Hebrew Excel
+  let csvContent = '\uFEFF';
   csvContent += 'תאריך ושעה,מספר ארגז,שם הספר,נבחר על ידי,טלפון / הערות\n';
 
   claimsList.forEach(c => {
@@ -689,7 +967,6 @@ function exportToCSV() {
   URL.revokeObjectURL(url);
 }
 
-// Utilities
 function formatDate(isoStr) {
   if (!isoStr) return '-';
   try {

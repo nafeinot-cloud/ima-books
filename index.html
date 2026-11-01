@@ -24,6 +24,15 @@
         <div class="stat-item">🖐️ נבחרו: <strong id="stat-claimed">0</strong></div>
         <div class="stat-item">✨ פנויים: <strong id="stat-available">0</strong></div>
       </div>
+
+      <div class="header-actions">
+        <button class="btn-header" id="btn-toggle-edit-mode">
+          ✏️ מצב עריכה (כבוי)
+        </button>
+        <button class="btn-header" id="btn-download-updated-data" title="שמור את כל התיקונים והתוספות לקובץ נתונים חדש">
+          💾 הורד קובץ נתונים מעודכן (books_data.js)
+        </button>
+      </div>
     </div>
   </header>
 
@@ -209,11 +218,70 @@
     </div>
   </div>
 
-  <!-- Lightbox Modal for zooming into high-res box photos -->
-  <div id="lightbox-modal" class="modal-backdrop hidden" onclick="closeLightbox(event)">
-    <div class="lightbox-card" onclick="event.stopPropagation()">
-      <img id="lightbox-img" class="lightbox-img" src="" alt="תמונת ארגז מלאה">
-      <div class="lightbox-caption" id="lightbox-caption"></div>
+  <!-- Edit Book / Box Modal -->
+  <div id="edit-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <button class="modal-close" onclick="closeEditModal()">&times;</button>
+      <div class="modal-header">
+        <div class="modal-title" id="edit-modal-title">עריכת פריט</div>
+      </div>
+
+      <form id="edit-form">
+        <input type="hidden" id="edit-type"> <!-- 'book' or 'box' -->
+        <input type="hidden" id="edit-box-id">
+        <input type="hidden" id="edit-book-id">
+
+        <div id="edit-book-fields">
+          <div class="form-group">
+            <label for="edit-book-title">שם הספר / הכותרת *</label>
+            <input type="text" id="edit-book-title" class="form-input" required>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-book-author">מחבר / כרכים / פירוט נוסף</label>
+            <input type="text" id="edit-book-author" class="form-input">
+          </div>
+
+          <div class="form-group" style="margin-top: 0.75rem;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="edit-book-is-set" style="width: 18px; height: 18px;">
+              <span><strong>📦 זהו סט שלם (נמסר כיחידה אחת ולא כבודדים)</strong></span>
+            </label>
+          </div>
+        </div>
+
+        <div id="edit-box-fields" class="hidden">
+          <div class="form-group">
+            <label for="edit-box-category">תיאור / נושא הארגז (יוצג בכותרת)</label>
+            <input type="text" id="edit-box-category" class="form-input" placeholder="למשל: ספרי רמב״ם, ספרי מוסר, ספרי ילדים">
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="submit" class="btn-submit">💾 שמור שינויים</button>
+          <button type="button" class="btn-action" onclick="closeEditModal()">ביטול</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Upgraded Fullscreen Lightbox with Zoom & Rotate -->
+  <div id="lightbox-modal" class="lightbox-modal hidden">
+    <div class="lightbox-toolbar">
+      <div class="lightbox-title" id="lightbox-caption">תמונת ארגז</div>
+      <div class="lightbox-controls">
+        <button class="lightbox-btn" onclick="zoomIn()" title="הגדל (או השתמש בגלגלת העכבר)">➕ הגדל</button>
+        <button class="lightbox-btn" onclick="zoomOut()" title="הקטן">➖ הקטן</button>
+        <button class="lightbox-btn" onclick="rotateImage()" title="סובב 90 מעלות">🔄 סובב</button>
+        <button class="lightbox-btn" onclick="resetZoom()" title="איפוס גודל וסיבוב">⟲ איפוס</button>
+        <a id="lightbox-external-link" href="#" target="_blank" class="lightbox-btn" title="פתח תמונה בחלון נפרד">↗ פתח בחלון חדש</a>
+        <button class="lightbox-btn close" onclick="closeLightbox()">✕ סגור</button>
+      </div>
+    </div>
+    <div class="lightbox-viewport" id="lightbox-viewport">
+      <div class="lightbox-image-container" id="lightbox-container">
+        <img id="lightbox-img" class="lightbox-img-element" src="" alt="תמונת ארגז">
+      </div>
     </div>
   </div>
 
