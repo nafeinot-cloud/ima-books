@@ -483,6 +483,26 @@ body {
   background: #059669;
 }
 
+.btn-batch-merge {
+  background: #f59e0b;
+  color: #0f172a;
+  border: none;
+  padding: 0.5rem 1.25rem;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s;
+}
+
+.btn-batch-merge:hover {
+  background: #d97706;
+  color: #fff;
+}
+
 .btn-batch-clear {
   background: none;
   border: none;

@@ -8,7 +8,7 @@ let isEditMode = false;
 let googleScriptUrl = localStorage.getItem('google_sheet_script_url') || '';
 
 // Multi-select Batch state
-const selectedBooksMap = new Map(); // key: "boxId__bookIdOrTitle" => { boxId, bookId, bookTitle, isSet }
+const selectedBooksMap = new Map(); // key: "boxId__bookIdOrTitle" => { boxId, bookId, bookTitle, isSet, author }
 
 // Lightbox state
 let currentZoom = 1;
@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initSearchAndFilter();
   initModal();
   initBatchModal();
+  initMergeSetModal();
   initEditModal();
   initLightbox();
   initSettings();
@@ -67,6 +68,8 @@ function loadData() {
   // Apply saved edits from localStorage
   try {
     const savedEdits = JSON.parse(localStorage.getItem('catalog_edits') || '{}');
+    
+    // Box category edits
     if (savedEdits.boxes) {
       Object.keys(savedEdits.boxes).forEach(boxId => {
         const box = catalogData.find(b => b.box_id == boxId);
@@ -76,6 +79,7 @@ function loadData() {
       });
     }
 
+    // Book edits & deletions
     if (savedEdits.books) {
       Object.keys(savedEdits.books).forEach(bookId => {
         const edit = savedEdits.books[bookId];
@@ -94,6 +98,22 @@ function loadData() {
       });
     }
 
+    // Merged sets from user
+    if (Array.isArray(savedEdits.mergedSets)) {
+      savedEdits.mergedSets.forEach(setObj => {
+        const box = catalogData.find(b => b.box_id == setObj.box_id);
+        if (box) {
+          // Remove the constituent books
+          box.books = box.books.filter(b => !setObj.removedIds.includes(b.id));
+          // Add merged set if not already present
+          if (!box.books.some(b => b.id === setObj.id)) {
+            box.books.unshift(setObj);
+          }
+        }
+      });
+    }
+
+    // Custom added books
     if (Array.isArray(savedEdits.customBooks)) {
       savedEdits.customBooks.forEach(cb => {
         const box = catalogData.find(b => b.box_id === cb.box_id);
@@ -120,10 +140,12 @@ function saveCatalogEdits(editsObj) {
     if (!current.boxes) current.boxes = {};
     if (!current.books) current.books = {};
     if (!current.customBooks) current.customBooks = [];
+    if (!current.mergedSets) current.mergedSets = [];
 
     if (editsObj.box) current.boxes[editsObj.box.id] = { category: editsObj.box.category };
     if (editsObj.book) current.books[editsObj.book.id] = editsObj.book;
     if (editsObj.newBook) current.customBooks.push(editsObj.newBook);
+    if (editsObj.mergedSet) current.mergedSets.push(editsObj.mergedSet);
 
     localStorage.setItem('catalog_edits', JSON.stringify(current));
   } catch (e) {
@@ -200,7 +222,8 @@ function initHeaderActions() {
       isEditMode = !isEditMode;
       btnEdit.classList.toggle('active', isEditMode);
       btnEdit.textContent = isEditMode ? '✓ מצב עריכה (פעיל)' : '✏️ מצב עריכה (כבוי)';
-      showToast(isEditMode ? 'מצב עריכה הופעל: כעת ניתן לערוך ספרים, שמות וארגזים' : 'מצב עריכה כבוי');
+      showToast(isEditMode ? 'מצב עריכה הופעל: כעת ניתן לערוך, למחוק, או לאחד ספרים לסטים' : 'מצב עריכה כבוי');
+      updateBatchBar();
       renderCurrentView();
     });
   }
@@ -260,17 +283,16 @@ function getBookKey(boxId, bookId, bookTitle) {
   return `${boxId}__${bookId || bookTitle}`;
 }
 
-function toggleBookSelection(boxId, bookId, bookTitle, isSet, checkboxElem) {
+function toggleBookSelection(boxId, bookId, bookTitle, isSet, author, elem) {
   const key = getBookKey(boxId, bookId, bookTitle);
   if (selectedBooksMap.has(key)) {
     selectedBooksMap.delete(key);
   } else {
-    selectedBooksMap.set(key, { boxId, bookId, bookTitle, isSet });
+    selectedBooksMap.set(key, { boxId, bookId, bookTitle, isSet, author });
   }
 
   updateBatchBar();
 
-  // Update styles of corresponding item
   document.querySelectorAll(`[data-book-key="${key}"]`).forEach(el => {
     el.classList.toggle('selected', selectedBooksMap.has(key));
     const cb = el.querySelector('.book-checkbox');
@@ -281,9 +303,18 @@ function toggleBookSelection(boxId, bookId, bookTitle, isSet, checkboxElem) {
 function updateBatchBar() {
   const bar = document.getElementById('batch-action-bar');
   const countSpan = document.getElementById('batch-count');
+  const btnMergeSet = document.getElementById('btn-batch-merge-set');
   const count = selectedBooksMap.size;
 
   if (countSpan) countSpan.textContent = count;
+  if (btnMergeSet) {
+    if (isEditMode && count >= 2) {
+      btnMergeSet.classList.remove('hidden');
+    } else {
+      btnMergeSet.classList.add('hidden');
+    }
+  }
+
   if (bar) {
     if (count > 0) {
       bar.classList.remove('hidden');
@@ -300,6 +331,7 @@ function clearBatchSelection() {
   document.querySelectorAll('.book-checkbox').forEach(cb => cb.checked = false);
 }
 
+// Batch Claim Modal
 function initBatchModal() {
   const form = document.getElementById('batch-claim-form');
   if (form) form.addEventListener('submit', handleBatchClaimSubmit);
@@ -336,7 +368,6 @@ function openBatchClaimModal() {
     index++;
   });
 
-  // Prepare batch WhatsApp link
   const btnWa = document.getElementById('batch-whatsapp-link');
   if (btnWa) {
     const text = `שלום נפתלי, ראיתי בקטלוג ספרי אמא ואשמח לקבל את הספרים הבאים:\n${whatsappBooksList.join('\n')}\nתודה, ${lastName || ''}`;
@@ -368,7 +399,6 @@ function handleBatchClaimSubmit(e) {
   let countSaved = 0;
 
   selectedBooksMap.forEach(item => {
-    // Remove existing claim for this book if any
     claimsList = claimsList.filter(c => !(c.boxId == item.boxId && (c.bookId === item.bookId || c.bookTitle === item.bookTitle)));
 
     const newClaim = {
@@ -391,6 +421,108 @@ function handleBatchClaimSubmit(e) {
   showToast(`${countSaved} ספרים נרשמו בהצלחה על שם ${userName}!`);
 
   closeBatchClaimModal();
+  clearBatchSelection();
+  renderCurrentView();
+}
+
+// Merge Set Modal Functions
+function initMergeSetModal() {
+  const form = document.getElementById('merge-set-form');
+  if (form) form.addEventListener('submit', handleMergeSetSubmit);
+}
+
+function openMergeSetModal() {
+  if (selectedBooksMap.size < 2) {
+    alert('יש לסמן לפחות 2 ספרים כדי לאחד אותם לסט שלם.');
+    return;
+  }
+
+  const modal = document.getElementById('merge-set-modal');
+  const listEl = document.getElementById('merge-set-list');
+  const countEl = document.getElementById('merge-set-count');
+  const titleInput = document.getElementById('merge-set-title');
+  const authorInput = document.getElementById('merge-set-author');
+
+  countEl.textContent = selectedBooksMap.size;
+  listEl.innerHTML = '';
+
+  const items = Array.from(selectedBooksMap.values());
+  let commonTitle = '';
+  let commonAuthor = items[0].author || '';
+
+  // Extract a sensible suggested base title
+  const firstTitle = items[0].bookTitle;
+  const match = firstTitle.match(/^([^\-\–\—:]+)/);
+  if (match) commonTitle = match[1].trim();
+
+  titleInput.value = `${commonTitle} (סט שלם - ${items.length} כרכים)`;
+  authorInput.value = commonAuthor;
+
+  items.forEach((item, idx) => {
+    const li = document.createElement('li');
+    li.className = 'batch-selected-item';
+    li.innerHTML = `
+      <span><strong>${idx + 1}. ${escapeHtml(item.bookTitle)}</strong></span>
+      <span style="color: var(--text-muted); font-size: 0.8rem;">ארגז ${item.boxId}</span>
+    `;
+    listEl.appendChild(li);
+  });
+
+  modal.classList.remove('hidden');
+  titleInput.focus();
+}
+
+function closeMergeSetModal() {
+  const modal = document.getElementById('merge-set-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function handleMergeSetSubmit(e) {
+  e.preventDefault();
+
+  const title = document.getElementById('merge-set-title').value.trim();
+  const author = document.getElementById('merge-set-author').value.trim();
+  const items = Array.from(selectedBooksMap.values());
+
+  if (!title || items.length < 2) return;
+
+  // Group items by boxId
+  const byBox = {};
+  items.forEach(it => {
+    if (!byBox[it.boxId]) byBox[it.boxId] = [];
+    byBox[it.boxId].push(it);
+  });
+
+  Object.keys(byBox).forEach(boxId => {
+    const boxItems = byBox[boxId];
+    const box = catalogData.find(b => b.box_id == boxId);
+    if (!box) return;
+
+    const removedIds = boxItems.map(it => it.bookId).filter(Boolean);
+    const volumeTitles = boxItems.map(it => it.bookTitle);
+
+    // Remove old items
+    box.books = box.books.filter(b => !removedIds.includes(b.id) && !volumeTitles.includes(b.title));
+
+    // Create new unified set
+    const newSetObj = {
+      id: `set_user_${boxId}_${Date.now()}`,
+      box_id: boxId,
+      title: title,
+      author: author,
+      is_set: true,
+      volumes_count: volumeTitles.length,
+      volumes: volumeTitles,
+      notes: `כולל: ${volumeTitles.join(', ')}`,
+      removedIds: removedIds
+    };
+
+    box.books.unshift(newSetObj);
+    saveCatalogEdits({ mergedSet: newSetObj });
+  });
+
+  showToast(`הספרים אוחדו בהצלחה לסט: "${title}"!`);
+  closeMergeSetModal();
   clearBatchSelection();
   renderCurrentView();
 }
@@ -448,7 +580,7 @@ function renderBoxesView() {
     const imageOriginal = `original_photos/${box.image_name}`;
 
     card.innerHTML = `
-      <div class="box-image-wrap" onclick="openLightbox('${box.image_name}', 'ארגז מס׳ ${box.box_id}: ${box.category || ''}')">
+      <div class="box-image-wrap" onclick="openLightboxById(${box.box_id})">
         <img class="box-img" src="${imageWeb}" onerror="this.onerror=null; this.src='${imageOriginal}'" alt="ארגז ${box.box_id}" loading="lazy">
         <div class="zoom-overlay">🔍 לחץ להגדלה וזום מלא</div>
       </div>
@@ -477,12 +609,12 @@ function renderBoxesView() {
             return `
               <li class="book-item ${isSet ? 'is-set' : ''} ${isClaimed ? 'claimed' : ''} ${isSelected ? 'selected' : ''}" 
                   data-book-key="${bookKey}"
-                  onclick="${!isClaimed ? `toggleBookSelection(${box.box_id}, '${book.id || ''}', '${escapeForJs(book.title)}', ${isSet}, this)` : ''}">
+                  onclick="${!isClaimed ? `toggleBookSelection(${box.box_id}, '${book.id || ''}', '${escapeForJs(book.title)}', ${isSet}, '${escapeForJs(book.author || '')}', this)` : ''}">
                 
                 ${!isClaimed ? `
                   <input type="checkbox" class="book-checkbox" ${isSelected ? 'checked' : ''} 
-                         onclick="event.stopPropagation(); toggleBookSelection(${box.box_id}, '${book.id || ''}', '${escapeForJs(book.title)}', ${isSet}, this)" 
-                         title="סמן לבחירה מרובה">
+                         onclick="event.stopPropagation(); toggleBookSelection(${box.box_id}, '${book.id || ''}', '${escapeForJs(book.title)}', ${isSet}, '${escapeForJs(book.author || '')}', this)" 
+                         title="סמן לבחירה מרובה / איחוד כסט">
                 ` : ''}
 
                 <div class="book-info">
@@ -597,13 +729,13 @@ function renderAllBooksView() {
     tr.innerHTML = `
       <td><strong>${book.boxId}</strong></td>
       <td>
-        <img class="table-thumb" src="${thumbUrl}" onerror="this.onerror=null; this.src='${origUrl}'" onclick="openLightbox('${book.imageName}', 'ארגז מס׳ ${book.boxId}')" title="לחץ להגדלה" alt="ארגז ${book.boxId}">
+        <img class="table-thumb" src="${thumbUrl}" onerror="this.onerror=null; this.src='${origUrl}'" onclick="openLightboxById(${book.boxId})" title="לחץ להגדלה" alt="ארגז ${book.boxId}">
       </td>
       <td style="font-weight: 600;">
         <div style="display: flex; align-items: center; gap: 8px;">
           ${!isClaimed ? `
             <input type="checkbox" class="book-checkbox" ${isSelected ? 'checked' : ''} 
-                   onclick="event.stopPropagation(); toggleBookSelection(${book.boxId}, '${book.id || ''}', '${escapeForJs(book.title)}', ${isSet}, this)">
+                   onclick="event.stopPropagation(); toggleBookSelection(${book.boxId}, '${book.id || ''}', '${escapeForJs(book.title)}', ${isSet}, '${escapeForJs(book.author || '')}', this)">
           ` : ''}
           <span>${escapeHtml(book.title)}</span>
           ${isSet ? `<span class="set-badge">סט שלם</span>` : ''}
@@ -666,7 +798,7 @@ function renderSummaryView() {
       <td style="font-size: 0.82rem; color: var(--text-muted);">${formatDate(c.timestamp)}</td>
       <td><strong>ארגז ${c.boxId}</strong></td>
       <td>
-        ${imageName ? `<img class="table-thumb" src="${thumbUrl}" onerror="this.onerror=null; this.src='${origUrl}'" onclick="openLightbox('${imageName}', 'ארגז מס׳ ${c.boxId}')" title="לחץ להגדלה">` : '-'}
+        ${imageName ? `<img class="table-thumb" src="${thumbUrl}" onerror="this.onerror=null; this.src='${origUrl}'" onclick="openLightboxById(${c.boxId})" title="לחץ להגדלה">` : '-'}
       </td>
       <td style="font-weight: 600;">${escapeHtml(c.bookTitle)}</td>
       <td style="color: var(--primary); font-weight: 700;">${escapeHtml(c.userName)}</td>
@@ -755,7 +887,6 @@ function handleClaimSubmit(e) {
   claimsList.push(newClaim);
   saveClaimsToStorage();
 
-  // If this book was selected in batch, unselect it
   selectedBooksMap.delete(getBookKey(boxId, bookId, bookTitle));
   updateBatchBar();
 
@@ -924,6 +1055,7 @@ function downloadUpdatedData() {
 // Lightbox with Zoom, Rotate, Pan & Wheel
 function initLightbox() {
   const viewport = document.getElementById('lightbox-viewport');
+  const img = document.getElementById('lightbox-img');
   if (!viewport) return;
 
   viewport.addEventListener('wheel', (e) => {
@@ -935,6 +1067,21 @@ function initLightbox() {
     }
   }, { passive: false });
 
+  // Toggle zoom on image click
+  if (img) {
+    img.style.pointerEvents = 'auto';
+    img.style.cursor = 'zoom-in';
+    img.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (currentZoom === 1) {
+        zoomIn(0.8);
+      } else {
+        resetZoom();
+      }
+    });
+  }
+
+  // Pan (drag)
   viewport.addEventListener('mousedown', (e) => {
     if (currentZoom > 1) {
       isPanning = true;
@@ -956,6 +1103,13 @@ function initLightbox() {
     viewport.classList.remove('panning');
   });
 
+  // Close when clicking empty space in viewport
+  viewport.addEventListener('click', (e) => {
+    if (e.target === viewport || e.target.id === 'lightbox-container') {
+      closeLightbox();
+    }
+  });
+
   window.addEventListener('keydown', (e) => {
     const modal = document.getElementById('lightbox-modal');
     if (!modal || modal.classList.contains('hidden')) return;
@@ -966,6 +1120,13 @@ function initLightbox() {
     if (e.key === 'r' || e.key === 'R') rotateImage();
     if (e.key === '0') resetZoom();
   });
+}
+
+function openLightboxById(boxId) {
+  const box = catalogData.find(b => b.box_id == boxId);
+  if (!box) return;
+  const caption = `ארגז מס׳ ${box.box_id}${box.category ? ': ' + box.category : ''}`;
+  openLightbox(box.image_name, caption);
 }
 
 function openLightbox(imageName, caption) {
@@ -982,6 +1143,8 @@ function openLightbox(imageName, caption) {
   img.onerror = () => {
     if (img.src.includes('web_images/')) {
       img.src = origUrl;
+    } else if (img.src.includes('original_photos/')) {
+      img.src = imageName;
     }
   };
 
@@ -990,11 +1153,15 @@ function openLightbox(imageName, caption) {
   if (extLink) extLink.href = origUrl;
 
   modal.classList.remove('hidden');
+  modal.style.display = 'flex';
 }
 
 function closeLightbox() {
   const modal = document.getElementById('lightbox-modal');
-  if (modal) modal.classList.add('hidden');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.style.display = 'none';
+  }
   resetZoom();
 }
 
