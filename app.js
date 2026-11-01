@@ -642,6 +642,17 @@ function handleMergeSetSubmit(e) {
 
       box.books.unshift(newSetObj);
       saveCatalogEdits({ mergedSet: newSetObj });
+
+      // Broadcast set merge to cloud so all devices see it
+      if (googleScriptUrl) {
+        sendClaimToCloud({
+          boxId: boxId,
+          bookTitle: title,
+          userName: '__SET_MERGE__',
+          userPhone: newSetObj.id,
+          notes: JSON.stringify(newSetObj)
+        });
+      }
     });
 
     showToast(`הספרים הוגדרו בהצלחה כסט שלם: "${title}"!`);
@@ -1225,6 +1236,17 @@ function handleEditSubmit(e) {
 
         saveCatalogEdits({ book: { id: bookId, title: newTitle, author: newAuthor, is_set: isSet } });
 
+        // Broadcast book edit to cloud (Google Sheets) so all devices see it!
+        if (googleScriptUrl) {
+          sendClaimToCloud({
+            boxId: boxId,
+            bookTitle: newTitle,
+            userName: '__EDIT_BOOK__',
+            userPhone: bookId,
+            notes: JSON.stringify({ bookId, oldTitle, newTitle, newAuthor, isSet })
+          });
+        }
+
         // Update any existing claims that matched the old title
         let claimsUpdated = false;
         claimsList.forEach(c => {
@@ -1263,6 +1285,18 @@ function deleteBook(boxId, bookId) {
 
   box.books = box.books.filter(b => b.id !== bookId);
   saveCatalogEdits({ book: { id: bookId, deleted: true } });
+
+  // Broadcast deletion to cloud so all devices delete it
+  if (googleScriptUrl) {
+    sendClaimToCloud({
+      boxId: boxId,
+      bookTitle: title,
+      userName: '__DELETE_BOOK__',
+      userPhone: bookId,
+      notes: JSON.stringify({ bookId })
+    });
+  }
+
   showToast('הספר נמחק מהארגז');
   renderCurrentView();
 }
@@ -1286,6 +1320,17 @@ function addCustomBook(boxId) {
     if (!box.books) box.books = [];
     box.books.push(newBook);
     saveCatalogEdits({ newBook: newBook });
+  }
+
+  // Broadcast new book to cloud so all devices see it
+  if (googleScriptUrl) {
+    sendClaimToCloud({
+      boxId: boxId,
+      bookTitle: title,
+      userName: '__ADD_BOOK__',
+      userPhone: newBook.id,
+      notes: JSON.stringify(newBook)
+    });
   }
 
   input.value = '';
@@ -1573,13 +1618,81 @@ function syncWithCloud(notify) {
     .then(data => {
       if (data && data.status === 'success' && Array.isArray(data.data)) {
         const cloudClaimsMap = new Map();
+        let catalogUpdated = false;
 
         data.data.forEach((item, index) => {
-          if (!item.bookTitle) return;
+          const cleanUser = String(item.userName || '').trim();
           const cleanBoxId = String(item.boxId || '').trim();
           const cleanTitle = String(item.bookTitle || '').trim();
+
+          // 1. Process Book Edit from Cloud
+          if (cleanUser === '__EDIT_BOOK__') {
+            try {
+              const edit = JSON.parse(item.notes || '{}');
+              const box = catalogData.find(b => String(b.box_id) === cleanBoxId);
+              if (box) {
+                const book = (box.books || []).find(b => b.id === edit.bookId || b.title === edit.oldTitle);
+                if (book) {
+                  if (edit.newTitle && book.title !== edit.newTitle) { book.title = edit.newTitle; catalogUpdated = true; }
+                  if (edit.newAuthor !== undefined && book.author !== edit.newAuthor) { book.author = edit.newAuthor; catalogUpdated = true; }
+                  if (edit.isSet !== undefined && book.is_set !== edit.isSet) { book.is_set = edit.isSet; catalogUpdated = true; }
+                }
+              }
+            } catch (e) {}
+            return;
+          }
+
+          // 2. Process Book Delete from Cloud
+          if (cleanUser === '__DELETE_BOOK__') {
+            try {
+              const delData = JSON.parse(item.notes || '{}');
+              const box = catalogData.find(b => String(b.box_id) === cleanBoxId);
+              if (box) {
+                const origLen = (box.books || []).length;
+                box.books = (box.books || []).filter(b => b.id !== delData.bookId && b.title !== cleanTitle);
+                if (box.books.length !== origLen) catalogUpdated = true;
+              }
+            } catch (e) {}
+            return;
+          }
+
+          // 3. Process Custom Book Added from Cloud
+          if (cleanUser === '__ADD_BOOK__') {
+            try {
+              const newBook = JSON.parse(item.notes || '{}');
+              const box = catalogData.find(b => String(b.box_id) === cleanBoxId);
+              if (box) {
+                if (!box.books) box.books = [];
+                if (!box.books.some(b => b.id === newBook.id || b.title === newBook.title)) {
+                  box.books.push(newBook);
+                  catalogUpdated = true;
+                }
+              }
+            } catch (e) {}
+            return;
+          }
+
+          // 4. Process Set Merge from Cloud
+          if (cleanUser === '__SET_MERGE__') {
+            try {
+              const setObj = JSON.parse(item.notes || '{}');
+              const box = catalogData.find(b => String(b.box_id) === cleanBoxId);
+              if (box) {
+                if (Array.isArray(setObj.removedIds)) {
+                  box.books = (box.books || []).filter(b => !setObj.removedIds.includes(b.id));
+                }
+                if (!(box.books || []).some(b => b.id === setObj.id)) {
+                  box.books.unshift(setObj);
+                  catalogUpdated = true;
+                }
+              }
+            } catch (e) {}
+            return;
+          }
+
+          // 5. Normal Claim
+          if (!item.bookTitle) return;
           const key = `${cleanBoxId}__${cleanTitle}`;
-          const cleanUser = String(item.userName || '').trim();
 
           if (!cleanUser || cleanUser === '__CANCELLED__') {
             cloudClaimsMap.delete(key);
@@ -1617,7 +1730,11 @@ function syncWithCloud(notify) {
         const oldSerialized = JSON.stringify(claimsList);
         const newSerialized = JSON.stringify(newClaimsList);
 
-        if (oldSerialized !== newSerialized) {
+        if (catalogUpdated) {
+          saveCatalogEdits({});
+        }
+
+        if (catalogUpdated || oldSerialized !== newSerialized) {
           claimsList = newClaimsList;
           saveClaimsToStorage();
           renderCurrentView();
