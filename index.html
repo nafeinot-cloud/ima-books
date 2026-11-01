@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>קטלוג ספרי אמא ז״ל - חלוקה למשפחה</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Site Header -->
+  <header class="site-header">
+    <div class="header-content">
+      <div class="site-badge">לעילוי נשמת אמא ז״ל • חלוקה למשפחה</div>
+      <h1 class="site-title">חלוקת ספרי אמא ז״ל</h1>
+      <p class="site-subtitle">
+        בני משפחה יקרים, מוזמנים לעיין בספרי הארגזים, לראות את התמונות ולסמן את הספרים שתרצו לקחת.
+        כל ספר שימשיכו לקרוא וללמוד בו הוא זכות גדולה לעילוי נשמתה.
+      </p>
+
+      <div class="stats-bar">
+        <div class="stat-item">📦 ארגזים: <strong id="stat-boxes">0</strong></div>
+        <div class="stat-item">📚 סה״כ ספרים: <strong id="stat-books">0</strong></div>
+        <div class="stat-item">🖐️ נבחרו: <strong id="stat-claimed">0</strong></div>
+        <div class="stat-item">✨ פנויים: <strong id="stat-available">0</strong></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav class="nav-tabs">
+    <button class="tab-btn active" data-tab="boxes">
+      📦 ספרים לפי ארגזים
+      <span class="tab-badge" id="badge-boxes-count">0</span>
+    </button>
+    <button class="tab-btn" data-tab="all-books">
+      📚 כל הספרים (רשימה)
+      <span class="tab-badge" id="badge-all-count">0</span>
+    </button>
+    <button class="tab-btn" data-tab="summary">
+      📋 ריכוז בקשות (מי לוקח מה)
+      <span class="tab-badge" id="badge-summary-count">0</span>
+    </button>
+    <button class="tab-btn" data-tab="settings">
+      ⚙️ סנכרון ענן (Google Sheets)
+    </button>
+  </nav>
+
+  <!-- Search & Filter Controls -->
+  <div class="controls-container" id="main-controls">
+    <div class="search-wrapper">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="search-input" class="search-input" placeholder="חיפוש ספר, מחבר, נושא או מספר ארגז...">
+    </div>
+    <div class="filter-group">
+      <button class="filter-btn active" data-filter="all">הכל</button>
+      <button class="filter-btn" data-filter="available">ספרים פנויים בלבד</button>
+      <button class="filter-btn" data-filter="claimed">ספרים שנבחרו</button>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <main class="main-container">
+    
+    <!-- View 1: Boxes Grid -->
+    <section id="view-boxes" class="tab-view">
+      <div id="boxes-container" class="boxes-grid">
+        <!-- Rendered by JS -->
+      </div>
+    </section>
+
+    <!-- View 2: All Books List -->
+    <section id="view-all-books" class="tab-view hidden">
+      <div class="summary-container">
+        <div class="summary-header">
+          <h2 class="summary-title">רשימת כל הספרים</h2>
+          <div id="all-books-count-text" style="color: var(--text-muted);"></div>
+        </div>
+        <div class="table-responsive">
+          <table class="styled-table" id="all-books-table">
+            <thead>
+              <tr>
+                <th style="width: 60px;">ארגז</th>
+                <th style="width: 70px;">תמונה</th>
+                <th>שם הספר</th>
+                <th>מחבר / הערות</th>
+                <th>סטטוס</th>
+                <th style="width: 140px;">פעולה</th>
+              </tr>
+            </thead>
+            <tbody id="all-books-tbody">
+              <!-- Rendered by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- View 3: Summary Table (Who took what) -->
+    <section id="view-summary" class="tab-view hidden">
+      <div class="summary-container">
+        <div class="summary-header">
+          <div>
+            <h2 class="summary-title">ריכוז כל הבקשות (מי לוקח מה)</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">
+              רשימת הספרים שנבחרו על ידי בני המשפחה. ניתן להוריד לאקסל או להדפיס.
+            </p>
+          </div>
+          <div class="table-actions">
+            <button class="btn-action primary" id="btn-export-csv">📥 הורדה לאקסל (CSV)</button>
+            <button class="btn-action" onclick="window.print()">🖨️ הדפסה</button>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center;">
+          <input type="text" id="summary-filter-user" class="form-input" style="max-width: 280px;" placeholder="סינון לפי שם בן משפחה...">
+        </div>
+
+        <div class="table-responsive">
+          <table class="styled-table">
+            <thead>
+              <tr>
+                <th style="width: 130px;">תאריך ושעה</th>
+                <th style="width: 80px;">ארגז</th>
+                <th style="width: 60px;">תמונה</th>
+                <th>שם הספר</th>
+                <th>נבחר על ידי</th>
+                <th>טלפון / הערות</th>
+                <th style="width: 80px;">ביטול</th>
+              </tr>
+            </thead>
+            <tbody id="summary-tbody">
+              <!-- Rendered by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- View 4: Cloud Settings (Google Sheets) -->
+    <section id="view-settings" class="tab-view hidden">
+      <div class="summary-container" style="max-width: 800px; margin: 0 auto;">
+        <h2 class="summary-title">סנכרון ענן בזמן אמת עם Google Sheets</h2>
+        <p style="color: var(--text-muted); margin: 0.75rem 0 1.25rem;">
+          כאשר האתר מועלה ל-GitHub Pages, חיבור ל-Google Sheets מאפשר לכל בן משפחה מהנייד שלו לסמן ספר – וזה יתעדכן מיד אצלך בגיליון אקסל בגוגל דרייב ובאתר של כולם!
+        </p>
+
+        <div class="form-group">
+          <label for="settings-sheet-url">כתובת Web App של Google Apps Script (אופציונלי):</label>
+          <input type="url" id="settings-sheet-url" class="form-input" placeholder="https://script.google.com/macros/s/.../exec">
+          <small style="color: var(--text-muted); display: block; margin-top: 4px;">
+            אם לא הוגדר קישור ענן, הנתונים נשמרים מקומית בדפדפן (LocalStorage).
+          </small>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+          <button class="btn-action primary" id="btn-save-settings">💾 שמור הגדרות</button>
+          <button class="btn-action" id="btn-sync-now">🔄 סנכרן עכשיו</button>
+        </div>
+
+        <div style="margin-top: 2rem; background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem;">
+          <h3 style="font-size: 1.05rem; margin-bottom: 0.5rem; color: var(--primary);">מדריך מהיר להגדרת Google Sheets (2 דקות):</h3>
+          <ol style="padding-right: 1.25rem; font-size: 0.92rem; line-height: 1.8;">
+            <li>פתח גיליון חדש ב-Google Sheets.</li>
+            <li>בשורה הראשונה כתוב עמודות: <strong>תאריך | מס' ארגז | שם הספר | נבחר ע״י | טלפון | הערות</strong></li>
+            <li>לחץ בתפריט העליון על <strong>Extensions -> Apps Script</strong> (הרחבות -> Apps Script).</li>
+            <li>העתק את תוכן הקובץ <code>google_apps_script.js</code> (נמצא בתיקייה) והדבק שם.</li>
+            <li>לחץ על <strong>Deploy -> New deployment</strong>, בחר <strong>Web app</strong>, ובהגדרה <em>Who has access</em> בחר <strong>Anyone</strong>.</li>
+            <li>העתק את כתובת ה-Web app והדבק אותה בשדה כאן למעלה ולחץ "שמור הגדרות"!</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Claim Modal -->
+  <div id="claim-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <button class="modal-close" id="btn-close-modal">&times;</button>
+      <div class="modal-header">
+        <div class="modal-title">אני מעוניין/ת בספר זה</div>
+        <div class="modal-book-name" id="modal-book-title">שם הספר</div>
+        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;" id="modal-box-info">ארגז מס' 1</div>
+      </div>
+
+      <form id="claim-form">
+        <input type="hidden" id="modal-box-id">
+        <input type="hidden" id="modal-book-id">
+        <input type="hidden" id="modal-book-exact-title">
+
+        <div class="form-group">
+          <label for="claim-name">שמך המלא *</label>
+          <input type="text" id="claim-name" class="form-input" required placeholder="למשל: דני כהן (בן / נכד...)">
+        </div>
+
+        <div class="form-group">
+          <label for="claim-phone">טלפון או הערה (אופציונלי)</label>
+          <input type="text" id="claim-phone" class="form-input" placeholder="מספר נייד או הערה">
+        </div>
+
+        <div class="modal-actions">
+          <button type="submit" class="btn-submit">✅ שמור בחירה</button>
+          <a href="#" id="modal-whatsapp-link" target="_blank" class="btn-whatsapp hidden">
+            💬 הודע בוואטסאפ
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Lightbox Modal for zooming into high-res box photos -->
+  <div id="lightbox-modal" class="modal-backdrop hidden" onclick="closeLightbox(event)">
+    <div class="lightbox-card" onclick="event.stopPropagation()">
+      <img id="lightbox-img" class="lightbox-img" src="" alt="תמונת ארגז מלאה">
+      <div class="lightbox-caption" id="lightbox-caption"></div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast">הבחירה נשמרה בהצלחה!</div>
+
+  <!-- Scripts -->
+  <script src="books_data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
