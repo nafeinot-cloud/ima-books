@@ -67,6 +67,23 @@
       <button class="filter-btn" data-filter="sets">📦 סטים שלמים בלבד</button>
       <button class="filter-btn" data-filter="claimed">ספרים שנבחרו</button>
     </div>
+
+    <div class="filter-user-group" id="filter-user-container">
+      <div class="filter-user-select-wrap">
+        <select id="filter-claimer-select" class="filter-user-select" aria-label="סינון לפי שם בוחר">
+          <option value="">👤 כל הבוחרים (הכל)</option>
+        </select>
+      </div>
+      <button type="button" id="btn-filter-my-books" class="btn-my-books" style="display: none;" title="הצג רק ספרים שאני בחרתי">
+        🙋‍♂️ הספרים שלי
+      </button>
+    </div>
+  </div>
+
+  <!-- Active Filter Notification Banner -->
+  <div id="active-filter-indicator" class="active-filter-banner hidden">
+    <span>🔍 מציג ספרים שנבחרו ע״י: <strong id="active-filter-name"></strong></span>
+    <button type="button" class="btn-clear-user-filter" onclick="clearClaimerFilter()">✕ הצג את כל הספרים</button>
   </div>
 
   <!-- Main Container -->
@@ -122,8 +139,12 @@
           </div>
         </div>
 
-        <div style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center;">
-          <input type="text" id="summary-filter-user" class="form-input" style="max-width: 280px;" placeholder="סינון לפי שם בן משפחה...">
+        <div style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+          <input type="text" id="summary-filter-user" class="form-input" style="max-width: 200px;" placeholder="חיפוש לפי שם...">
+          <select id="summary-user-select" class="form-input" style="max-width: 180px; height: 38px;">
+            <option value="">כל בני המשפחה</option>
+          </select>
+          <div id="summary-user-pills" style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;"></div>
         </div>
 
         <div class="table-responsive">

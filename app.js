@@ -4,6 +4,7 @@ let claimsList = [];
 let activeTab = 'boxes';
 let activeFilter = 'all';
 let searchQuery = '';
+let selectedClaimerFilter = '';
 let isEditMode = false;
 const DEFAULT_GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyQ35FfKv6vkvZj7iibAzAJIFVyKBHGzT34yQC0lOQ2xwv72E2qm1wG_gxpZU8Hw00/exec';
 let savedUrl = localStorage.getItem('google_sheet_script_url');
@@ -213,7 +214,35 @@ function initSearchAndFilter() {
 
   const summaryUserFilter = document.getElementById('summary-filter-user');
   if (summaryUserFilter) {
-    summaryUserFilter.addEventListener('input', renderSummaryView);
+    summaryUserFilter.addEventListener('input', (e) => {
+      selectedClaimerFilter = e.target.value.trim();
+      updateUserFilterOptions();
+      renderCurrentView();
+    });
+  }
+
+  const filterClaimerSelect = document.getElementById('filter-claimer-select');
+  if (filterClaimerSelect) {
+    filterClaimerSelect.addEventListener('change', (e) => {
+      setClaimerFilter(e.target.value);
+    });
+  }
+
+  const btnMyBooks = document.getElementById('btn-filter-my-books');
+  if (btnMyBooks) {
+    btnMyBooks.addEventListener('click', () => {
+      const myName = (localStorage.getItem('last_user_name') || '').trim();
+      if (myName) {
+        setClaimerFilter(myName);
+      }
+    });
+  }
+
+  const summaryUserSelect = document.getElementById('summary-user-select');
+  if (summaryUserSelect) {
+    summaryUserSelect.addEventListener('change', (e) => {
+      setClaimerFilter(e.target.value);
+    });
   }
 
   const btnExportCsv = document.getElementById('btn-export-csv');
@@ -267,6 +296,7 @@ function updateStats() {
 function renderCurrentView() {
   updateStats();
   updateBatchBar();
+  updateUserFilterOptions();
   if (activeTab === 'boxes') {
     renderBoxesView();
   } else if (activeTab === 'all-books') {
@@ -633,6 +663,12 @@ function renderBoxesView() {
     const books = (box.books || []).filter(book => {
       const claim = getBookClaim(box.box_id, book.id, book.title);
       
+      // Filter by selected claimer/user
+      if (selectedClaimerFilter) {
+        if (!claim) return false;
+        if ((claim.userName || '').trim().toLowerCase() !== selectedClaimerFilter.trim().toLowerCase()) return false;
+      }
+
       if (activeFilter === 'available' && claim) return false;
       if (activeFilter === 'claimed' && !claim) return false;
       if (activeFilter === 'sets' && !book.is_set) return false;
@@ -786,6 +822,12 @@ function renderAllBooksView() {
   allBooks = allBooks.filter(book => {
     const claim = getBookClaim(book.boxId, book.id, book.title);
 
+    // Filter by selected claimer/user
+    if (selectedClaimerFilter) {
+      if (!claim) return false;
+      if ((claim.userName || '').trim().toLowerCase() !== selectedClaimerFilter.trim().toLowerCase()) return false;
+    }
+
     if (activeFilter === 'available' && claim) return false;
     if (activeFilter === 'claimed' && !claim) return false;
     if (activeFilter === 'sets' && !book.is_set) return false;
@@ -870,8 +912,11 @@ function renderSummaryView() {
   const filterInput = document.getElementById('summary-filter-user');
   const userQuery = filterInput ? filterInput.value.trim().toLowerCase() : '';
 
-  let list = [...claimsList];
-  if (userQuery) {
+  let list = [...claimsList].filter(c => c.userName && c.userName !== '__CANCELLED__');
+
+  if (selectedClaimerFilter) {
+    list = list.filter(c => (c.userName || '').trim().toLowerCase().includes(selectedClaimerFilter.trim().toLowerCase()));
+  } else if (userQuery) {
     list = list.filter(c => (c.userName || '').toLowerCase().includes(userQuery));
   }
 
@@ -1588,15 +1633,21 @@ function uploadAllLocalClaimsToCloud() {
 
 // Export to CSV
 function exportToCSV() {
-  if (claimsList.length === 0) {
-    alert('אין בקשות לייצוא עדיין.');
+  let list = [...claimsList].filter(c => c.userName && c.userName !== '__CANCELLED__');
+
+  if (selectedClaimerFilter) {
+    list = list.filter(c => (c.userName || '').trim().toLowerCase().includes(selectedClaimerFilter.trim().toLowerCase()));
+  }
+
+  if (list.length === 0) {
+    alert('אין בקשות לייצוא התואמות את הסינון הנוכחי.');
     return;
   }
 
   let csvContent = '\uFEFF';
   csvContent += 'תאריך ושעה,מספר ארגז,שם הספר,נבחר על ידי,טלפון / הערות\n';
 
-  claimsList.forEach(c => {
+  list.forEach(c => {
     const date = formatDate(c.timestamp).replace(',', '');
     const box = `ארגז ${c.boxId}`;
     const book = `"${(c.bookTitle || '').replace(/"/g, '""')}"`;
@@ -1610,11 +1661,128 @@ function exportToCSV() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `ריכוז_ספרי_אמא_זל_${new Date().toISOString().slice(0, 10)}.csv`;
+  const fileNameSuffix = selectedClaimerFilter ? `_${selectedClaimerFilter.replace(/\s+/g, '_')}` : '';
+  a.download = `ריכוז_ספרי_אמא_זל${fileNameSuffix}_${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+// User / Claimer Filter Functions
+function updateUserFilterOptions() {
+  const mainSelect = document.getElementById('filter-claimer-select');
+  const summarySelect = document.getElementById('summary-user-select');
+  const myBooksBtn = document.getElementById('btn-filter-my-books');
+  const myName = (localStorage.getItem('last_user_name') || '').trim();
+
+  // Tally counts per claimer
+  const counts = {};
+  claimsList.forEach(c => {
+    const u = (c.userName || '').trim();
+    if (u && u !== '__CANCELLED__') {
+      counts[u] = (counts[u] || 0) + 1;
+    }
+  });
+
+  const users = Object.keys(counts).sort((a, b) => a.localeCompare(b, 'he'));
+
+  // Update "My Books" shortcut button
+  if (myBooksBtn) {
+    if (myName && counts[myName]) {
+      myBooksBtn.style.display = 'inline-flex';
+      myBooksBtn.innerHTML = `🙋‍♂️ הספרים שלי (${escapeHtml(myName)}: ${counts[myName]})`;
+      myBooksBtn.classList.toggle('active', selectedClaimerFilter.toLowerCase() === myName.toLowerCase());
+    } else {
+      myBooksBtn.style.display = 'none';
+    }
+  }
+
+  // Populate main toolbar dropdown
+  if (mainSelect) {
+    let html = '<option value="">👤 כל הבוחרים (הכל)</option>';
+    users.forEach(u => {
+      const isSel = (u.toLowerCase() === selectedClaimerFilter.toLowerCase()) ? 'selected' : '';
+      html += `<option value="${escapeHtml(u)}" ${isSel}>${escapeHtml(u)} (${counts[u]} ספרים)</option>`;
+    });
+    mainSelect.innerHTML = html;
+  }
+
+  // Populate summary tab dropdown & clickable pills
+  if (summarySelect) {
+    let html = '<option value="">כל בני המשפחה</option>';
+    users.forEach(u => {
+      const isSel = (u.toLowerCase() === selectedClaimerFilter.toLowerCase()) ? 'selected' : '';
+      html += `<option value="${escapeHtml(u)}" ${isSel}>${escapeHtml(u)} (${counts[u]})</option>`;
+    });
+    summarySelect.innerHTML = html;
+  }
+
+  const pillsContainer = document.getElementById('summary-user-pills');
+  if (pillsContainer) {
+    let html = '';
+    users.forEach(u => {
+      const isSel = selectedClaimerFilter.toLowerCase() === u.toLowerCase();
+      html += `
+        <button type="button" class="user-pill ${isSel ? 'active' : ''}" onclick="setClaimerFilter('${escapeForJs(u)}')">
+          👤 ${escapeHtml(u)} <span class="pill-count">${counts[u]}</span>
+        </button>
+      `;
+    });
+    pillsContainer.innerHTML = html;
+  }
+
+  updateActiveFilterBanner();
+}
+
+function updateActiveFilterBanner() {
+  const banner = document.getElementById('active-filter-indicator');
+  const nameEl = document.getElementById('active-filter-name');
+  if (!banner || !nameEl) return;
+
+  if (selectedClaimerFilter) {
+    nameEl.textContent = selectedClaimerFilter;
+    banner.classList.remove('hidden');
+  } else {
+    banner.classList.add('hidden');
+  }
+}
+
+function setClaimerFilter(userName) {
+  const target = (userName || '').trim();
+  if (selectedClaimerFilter.toLowerCase() === target.toLowerCase()) {
+    selectedClaimerFilter = '';
+  } else {
+    selectedClaimerFilter = target;
+  }
+
+  const mainSelect = document.getElementById('filter-claimer-select');
+  if (mainSelect) mainSelect.value = selectedClaimerFilter;
+
+  const summarySelect = document.getElementById('summary-user-select');
+  if (summarySelect) summarySelect.value = selectedClaimerFilter;
+
+  const summaryInput = document.getElementById('summary-filter-user');
+  if (summaryInput) summaryInput.value = selectedClaimerFilter;
+
+  updateUserFilterOptions();
+  renderCurrentView();
+}
+
+function clearClaimerFilter() {
+  selectedClaimerFilter = '';
+
+  const mainSelect = document.getElementById('filter-claimer-select');
+  if (mainSelect) mainSelect.value = '';
+
+  const summarySelect = document.getElementById('summary-user-select');
+  if (summarySelect) summarySelect.value = '';
+
+  const summaryInput = document.getElementById('summary-filter-user');
+  if (summaryInput) summaryInput.value = '';
+
+  updateUserFilterOptions();
+  renderCurrentView();
 }
 
 function formatDate(isoStr) {
