@@ -163,9 +163,10 @@
           </small>
         </div>
 
-        <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+        <div style="display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
           <button class="btn-action primary" id="btn-save-settings">💾 שמור הגדרות</button>
-          <button class="btn-action" id="btn-sync-now">🔄 סנכרן עכשיו</button>
+          <button class="btn-action" id="btn-sync-now">🔄 סנכרן מול Google Sheets</button>
+          <button class="btn-action" style="background: #059669; color: #fff; border-color: #059669;" onclick="uploadAllLocalClaimsToCloud()">📤 העלה את כל הסימונים הקיימים שלי לענן</button>
         </div>
 
         <div style="margin-top: 2rem; background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem;">

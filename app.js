@@ -1524,15 +1524,19 @@ function syncWithCloud(notify) {
           }
         });
 
-        // Retain any locally made claims that haven't been pushed to sheet yet
+        // Retain and upload any locally made claims that are not yet in the sheet
+        let uploadIndex = 0;
         claimsList.forEach(localClaim => {
-          if (localClaim.id && localClaim.id.startsWith('c_')) {
+          if (localClaim.userName && localClaim.userName !== '__CANCELLED__') {
             const cleanBoxId = String(localClaim.boxId || '').trim();
             const cleanTitle = String(localClaim.bookTitle || '').trim();
             const key = `${cleanBoxId}__${cleanTitle}`;
             if (!cloudClaimsMap.has(key)) {
               cloudClaimsMap.set(key, localClaim);
-              sendClaimToCloud(localClaim);
+              setTimeout(() => {
+                sendClaimToCloud(localClaim);
+              }, uploadIndex * 350);
+              uploadIndex++;
             }
           }
         });
@@ -1554,6 +1558,32 @@ function syncWithCloud(notify) {
       console.warn('Error fetching cloud claims', err);
       if (notify) showToast('שגיאה בסנכרון עם Google Sheets');
     });
+}
+
+function uploadAllLocalClaimsToCloud() {
+  if (!googleScriptUrl) {
+    showToast('נא להזין קישור Google Apps Script תקין');
+    return;
+  }
+  if (!claimsList || claimsList.length === 0) {
+    showToast('אין ספרים מסומנים כרגע בדפדפן להעלאה');
+    return;
+  }
+
+  let count = 0;
+  claimsList.forEach((c, idx) => {
+    if (c.userName && c.userName !== '__CANCELLED__') {
+      setTimeout(() => {
+        sendClaimToCloud(c);
+      }, idx * 300);
+      count++;
+    }
+  });
+
+  showToast(`מעלה ${count} סימונים לענן... אנא המתן לסיום.`);
+  setTimeout(() => {
+    syncWithCloud(true);
+  }, count * 300 + 2000);
 }
 
 // Export to CSV
