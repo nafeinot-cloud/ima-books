@@ -639,6 +639,17 @@ body {
   gap: 4px;
 }
 
+.claimed-tag.clickable {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.claimed-tag.clickable:hover {
+  background: #fde68a;
+  border-color: #f59e0b;
+  transform: translateY(-1px);
+}
+
 /* Add custom book form inside box */
 .add-custom-book {
   margin-top: 1rem;

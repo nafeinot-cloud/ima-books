@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initModal();
   initBatchModal();
   initMergeSetModal();
+  initEditClaimModal();
   initEditModal();
   initLightbox();
   initSettings();
@@ -730,7 +731,7 @@ function renderBoxesView() {
                   ` : ''}
 
                   ${isClaimed 
-                    ? `<span class="claimed-tag">✓ נבחר ע״י ${escapeHtml(claim.userName)}</span>` 
+                    ? `<span class="claimed-tag clickable" onclick="openEditClaimByBook(${box.box_id}, '${book.id || ''}', '${escapeForJs(book.title)}')" title="לחץ לעריכת פרטי המבקש / החלפת שם / ביטול">✓ נבחר ע״י ${escapeHtml(claim.userName)} <span style="font-size:0.75rem;opacity:0.8;margin-right:4px;">✏️</span></span>` 
                     : `<button class="btn-claim" onclick="openClaimModal(${box.box_id}, '${book.id || ''}', '${escapeForJs(book.title)}')">🖐️ ${isSet ? 'קח סט' : 'אני רוצה'}</button>`
                   }
                 </div>
@@ -831,7 +832,7 @@ function renderAllBooksView() {
       <td style="color: var(--text-muted);">${escapeHtml(book.author || '-')}</td>
       <td>
         ${isClaimed 
-          ? `<span class="claimed-tag">נבחר ע״י ${escapeHtml(claim.userName)}</span>` 
+          ? `<span class="claimed-tag clickable" onclick="openEditClaimByBook(${book.boxId}, '${book.id || ''}', '${escapeForJs(book.title)}')" title="לחץ לעריכת פרטי המבקש / החלפת שם">נבחר ע״י ${escapeHtml(claim.userName)} ✏️</span>` 
           : `<span style="color: var(--success); font-weight: 600; font-size: 0.85rem;">● פנוי</span>`
         }
       </td>
@@ -843,7 +844,7 @@ function renderAllBooksView() {
           ` : ''}
 
           ${isClaimed 
-            ? `<button class="btn-action" style="font-size: 0.8rem; padding: 3px 8px;" onclick="openClaimModal(${book.boxId}, '${book.id || ''}', '${escapeForJs(book.title)}')">פרטים / שינוי</button>` 
+            ? `<button class="btn-action" style="font-size: 0.8rem; padding: 3px 8px;" onclick="openEditClaimByBook(${book.boxId}, '${book.id || ''}', '${escapeForJs(book.title)}')">✏️ עריכה / שינוי</button>` 
             : `<button class="btn-claim" onclick="openClaimModal(${book.boxId}, '${book.id || ''}', '${escapeForJs(book.title)}')">🖐️ ${isSet ? 'קח סט' : 'אני רוצה'}</button>`
           }
         </div>
@@ -891,7 +892,10 @@ function renderSummaryView() {
       <td style="color: var(--primary); font-weight: 700;">${escapeHtml(c.userName)}</td>
       <td style="font-size: 0.88rem; color: var(--text-muted);">${escapeHtml(c.userPhone || c.notes || '-')}</td>
       <td>
-        <button class="btn-delete-row" onclick="removeClaim('${c.id}')" title="ביטול בחירה">🗑️</button>
+        <div style="display: flex; gap: 6px; justify-content: center; align-items: center;">
+          <button class="btn-action" style="font-size: 0.82rem; padding: 4px 8px;" onclick="openEditClaimModal('${c.id}')" title="עריכת פרטי מבקש או החלפת שם">✏️ ערוך</button>
+          <button class="btn-delete-row" onclick="removeClaim('${c.id}')" title="ביטול בחירה ושחרור הספר">🗑️</button>
+        </div>
       </td>
     `;
     tbody.appendChild(tr);
@@ -994,8 +998,84 @@ function removeClaim(claimId) {
 
   claimsList = claimsList.filter(c => c.id !== claimId);
   saveClaimsToStorage();
-  showToast('הבחירה בוטלה');
+  showToast('הבחירה בוטלה והספר פנוי שוב');
   renderCurrentView();
+}
+
+// Edit Claim / Change Person Modal Functions
+function initEditClaimModal() {
+  const modal = document.getElementById('edit-claim-modal');
+  const form = document.getElementById('edit-claim-form');
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeEditClaimModal();
+    });
+  }
+  if (form) form.addEventListener('submit', handleEditClaimSubmit);
+}
+
+function openEditClaimModal(claimId) {
+  const claim = claimsList.find(c => c.id === claimId);
+  if (!claim) return;
+
+  const modal = document.getElementById('edit-claim-modal');
+  document.getElementById('edit-claim-id').value = claim.id;
+  document.getElementById('edit-claim-book-title').textContent = claim.bookTitle || '';
+  document.getElementById('edit-claim-box-info').textContent = `ארגז מס׳ ${claim.boxId}`;
+  document.getElementById('edit-claim-user-name').value = claim.userName || '';
+  document.getElementById('edit-claim-user-phone').value = claim.userPhone || claim.notes || '';
+
+  modal.classList.remove('hidden');
+  document.getElementById('edit-claim-user-name').focus();
+}
+
+function openEditClaimByBook(boxId, bookId, bookTitle) {
+  const claim = getBookClaim(boxId, bookId, bookTitle);
+  if (claim) {
+    openEditClaimModal(claim.id);
+  } else {
+    openClaimModal(boxId, bookId, bookTitle);
+  }
+}
+
+function closeEditClaimModal() {
+  const modal = document.getElementById('edit-claim-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function handleEditClaimSubmit(e) {
+  e.preventDefault();
+
+  const claimId = document.getElementById('edit-claim-id').value;
+  const newName = document.getElementById('edit-claim-user-name').value.trim();
+  const newPhone = document.getElementById('edit-claim-user-phone').value.trim();
+
+  if (!newName) return;
+
+  const claim = claimsList.find(c => c.id === claimId);
+  if (!claim) return;
+
+  claim.userName = newName;
+  claim.userPhone = newPhone;
+  claim.timestamp = new Date().toISOString();
+
+  saveClaimsToStorage();
+
+  if (googleScriptUrl) {
+    sendClaimToCloud(claim);
+  }
+
+  showToast(`הרישום עודכן: "${claim.bookTitle}" רשום כעת על שם ${newName}`);
+  closeEditClaimModal();
+  renderCurrentView();
+}
+
+function deleteCurrentClaim() {
+  const claimId = document.getElementById('edit-claim-id').value;
+  if (!claimId) return;
+
+  closeEditClaimModal();
+  removeClaim(claimId);
 }
 
 // Edit Modal Functions

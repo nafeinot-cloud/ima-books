@@ -219,6 +219,38 @@
     </div>
   </div>
 
+  <!-- Edit Claim / Change Person Modal -->
+  <div id="edit-claim-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <button class="modal-close" onclick="closeEditClaimModal()">&times;</button>
+      <div class="modal-header">
+        <div class="modal-title">עריכת פרטי מבקש / החלפת שם</div>
+        <div class="modal-book-name" id="edit-claim-book-title">שם הספר</div>
+        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;" id="edit-claim-box-info">ארגז מס' 1</div>
+      </div>
+
+      <form id="edit-claim-form">
+        <input type="hidden" id="edit-claim-id">
+
+        <div class="form-group">
+          <label for="edit-claim-user-name">נרשם על שם (שם בן המשפחה) *</label>
+          <input type="text" id="edit-claim-user-name" class="form-input" required placeholder="למשל: דני כהן">
+        </div>
+
+        <div class="form-group">
+          <label for="edit-claim-user-phone">טלפון או הערות (אופציונלי)</label>
+          <input type="text" id="edit-claim-user-phone" class="form-input" placeholder="מספר נייד או הערה">
+        </div>
+
+        <div class="modal-actions" style="flex-wrap: wrap;">
+          <button type="submit" class="btn-submit">💾 שמור שינויים</button>
+          <button type="button" class="btn-action" style="color: var(--danger); border-color: #fca5a5;" onclick="deleteCurrentClaim()">🗑️ בטל רישום ושחרר ספר</button>
+          <button type="button" class="btn-action" onclick="closeEditClaimModal()">סגור</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Edit Book / Box Modal -->
   <div id="edit-modal" class="modal-backdrop hidden">
     <div class="modal-card">
