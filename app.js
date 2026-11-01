@@ -5,7 +5,9 @@ let activeTab = 'boxes';
 let activeFilter = 'all';
 let searchQuery = '';
 let isEditMode = false;
-let googleScriptUrl = localStorage.getItem('google_sheet_script_url') || '';
+const DEFAULT_GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyQ35FfKv6vkvZj7iibAzAJIFVyKBHGzT34yQC0lOQ2xwv72E2qm1wG_gxpZU8Hw00/exec';
+let savedUrl = localStorage.getItem('google_sheet_script_url');
+let googleScriptUrl = (savedUrl && savedUrl.trim()) ? savedUrl.trim() : DEFAULT_GOOGLE_SCRIPT_URL;
 
 // Multi-select Batch state
 const selectedBooksMap = new Map(); // key: "boxId__bookIdOrTitle" => { boxId, bookId, bookTitle, isSet, author }
@@ -132,6 +134,11 @@ function loadData() {
 
   if (googleScriptUrl) {
     syncWithCloud(false);
+    if (!window._cloudSyncInterval) {
+      window._cloudSyncInterval = setInterval(() => {
+        syncWithCloud(false);
+      }, 15000);
+    }
   }
 }
 
@@ -998,6 +1005,17 @@ function removeClaim(claimId) {
 
   claimsList = claimsList.filter(c => c.id !== claimId);
   saveClaimsToStorage();
+
+  if (item && googleScriptUrl) {
+    sendClaimToCloud({
+      boxId: item.boxId,
+      bookTitle: item.bookTitle,
+      userName: '__CANCELLED__',
+      userPhone: '',
+      notes: 'בוטל / שוחרר'
+    });
+  }
+
   showToast('הבחירה בוטלה והספר פנוי שוב');
   renderCurrentView();
 }
@@ -1441,12 +1459,13 @@ function showToast(msg) {
 // Settings & Cloud Sync
 function initSettings() {
   const urlInput = document.getElementById('settings-sheet-url');
-  if (urlInput && googleScriptUrl) urlInput.value = googleScriptUrl;
+  if (urlInput) urlInput.value = googleScriptUrl || DEFAULT_GOOGLE_SCRIPT_URL;
 
   const btnSave = document.getElementById('btn-save-settings');
   if (btnSave) {
     btnSave.addEventListener('click', () => {
-      googleScriptUrl = document.getElementById('settings-sheet-url').value.trim();
+      const val = document.getElementById('settings-sheet-url').value.trim();
+      googleScriptUrl = val || DEFAULT_GOOGLE_SCRIPT_URL;
       localStorage.setItem('google_sheet_script_url', googleScriptUrl);
       showToast('ההגדרות נשמרו בהצלחה!');
       if (googleScriptUrl) syncWithCloud(true);
@@ -1462,12 +1481,16 @@ function initSettings() {
 function sendClaimToCloud(claim) {
   if (!googleScriptUrl) return;
 
-  fetch(googleScriptUrl, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(claim)
-  }).catch(err => console.warn('Cloud sync error', err));
+  try {
+    fetch(googleScriptUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(claim)
+    }).catch(err => console.warn('Cloud sync error', err));
+  } catch (e) {
+    console.warn('sendClaimToCloud error', e);
+  }
 }
 
 function syncWithCloud(notify) {
@@ -1477,30 +1500,58 @@ function syncWithCloud(notify) {
     .then(res => res.json())
     .then(data => {
       if (data && data.status === 'success' && Array.isArray(data.data)) {
-        data.data.forEach(cloudItem => {
-          const exists = claimsList.some(c => 
-            c.boxId == cloudItem.boxId && 
-            c.bookTitle === cloudItem.bookTitle && 
-            c.userName === cloudItem.userName
-          );
-          if (!exists) {
-            claimsList.push({
-              id: 'cloud_' + Math.random().toString(36).substr(2, 6),
-              timestamp: cloudItem.timestamp || new Date().toISOString(),
-              boxId: cloudItem.boxId,
-              bookTitle: cloudItem.bookTitle,
-              userName: cloudItem.userName,
-              userPhone: cloudItem.userPhone,
-              notes: cloudItem.notes
+        const cloudClaimsMap = new Map();
+
+        data.data.forEach((item, index) => {
+          if (!item.bookTitle) return;
+          const cleanBoxId = String(item.boxId || '').trim();
+          const cleanTitle = String(item.bookTitle || '').trim();
+          const key = `${cleanBoxId}__${cleanTitle}`;
+          const cleanUser = String(item.userName || '').trim();
+
+          if (!cleanUser || cleanUser === '__CANCELLED__') {
+            cloudClaimsMap.delete(key);
+          } else {
+            cloudClaimsMap.set(key, {
+              id: 'cloud_' + index + '_' + cleanBoxId,
+              timestamp: item.timestamp || new Date().toISOString(),
+              boxId: cleanBoxId,
+              bookTitle: cleanTitle,
+              userName: cleanUser,
+              userPhone: item.userPhone ? String(item.userPhone).trim() : '',
+              notes: item.notes ? String(item.notes).trim() : ''
             });
           }
         });
-        saveClaimsToStorage();
-        renderCurrentView();
+
+        // Retain any locally made claims that haven't been pushed to sheet yet
+        claimsList.forEach(localClaim => {
+          if (localClaim.id && localClaim.id.startsWith('c_')) {
+            const cleanBoxId = String(localClaim.boxId || '').trim();
+            const cleanTitle = String(localClaim.bookTitle || '').trim();
+            const key = `${cleanBoxId}__${cleanTitle}`;
+            if (!cloudClaimsMap.has(key)) {
+              cloudClaimsMap.set(key, localClaim);
+              sendClaimToCloud(localClaim);
+            }
+          }
+        });
+
+        const newClaimsList = Array.from(cloudClaimsMap.values());
+        const oldSerialized = JSON.stringify(claimsList);
+        const newSerialized = JSON.stringify(newClaimsList);
+
+        if (oldSerialized !== newSerialized) {
+          claimsList = newClaimsList;
+          saveClaimsToStorage();
+          renderCurrentView();
+        }
+
         if (notify) showToast('הסנכרון עם Google Sheets הושלם בהצלחה!');
       }
     })
     .catch(err => {
+      console.warn('Error fetching cloud claims', err);
       if (notify) showToast('שגיאה בסנכרון עם Google Sheets');
     });
 }
