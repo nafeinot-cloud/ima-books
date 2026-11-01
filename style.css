@@ -1019,7 +1019,7 @@ body {
 }
 
 @media print {
-  .site-header, .nav-tabs, .controls-container, .table-actions, .btn-delete-row, .add-custom-book, .btn-claim, .btn-header {
+  .site-header, .nav-tabs, .controls-container, .table-actions, .btn-delete-row, .add-custom-book, .btn-claim, .btn-header, .batch-bar {
     display: none !important;
   }
   body {
@@ -1030,5 +1030,205 @@ body {
     box-shadow: none;
     border: none;
     padding: 0;
+  }
+}
+
+/* Mobile Responsiveness Improvements */
+@media (max-width: 640px) {
+  .site-header {
+    padding: 1.5rem 0.75rem 1.25rem;
+  }
+
+  .site-title {
+    font-size: 1.6rem;
+  }
+
+  .site-subtitle {
+    font-size: 0.92rem;
+    margin-bottom: 1rem;
+  }
+
+  .stats-bar {
+    gap: 0.4rem;
+  }
+
+  .stat-item {
+    font-size: 0.78rem;
+    padding: 0.35rem 0.75rem;
+  }
+
+  .header-actions {
+    gap: 0.5rem;
+  }
+
+  .btn-header {
+    font-size: 0.78rem;
+    padding: 0.35rem 0.75rem;
+  }
+
+  .nav-tabs {
+    gap: 0.25rem;
+    padding: 0 0.5rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .nav-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab-btn {
+    font-size: 0.88rem;
+    padding: 0.6rem 0.85rem;
+  }
+
+  .controls-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0 0.75rem;
+  }
+
+  .search-wrapper {
+    flex: 1 1 100%;
+  }
+
+  .filter-group {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .filter-group::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filter-btn {
+    white-space: nowrap;
+    font-size: 0.82rem;
+    padding: 0.4rem 0.8rem;
+  }
+
+  .main-container {
+    padding: 0 0.65rem;
+  }
+
+  .box-card {
+    border-radius: 10px;
+    margin-bottom: 1.25rem;
+  }
+
+  .box-image-wrap {
+    min-height: 200px;
+    max-height: 280px;
+  }
+
+  .box-content {
+    padding: 1rem 0.85rem;
+  }
+
+  .box-title {
+    font-size: 1.15rem;
+  }
+
+  .book-item {
+    padding: 0.6rem 0.65rem;
+    gap: 0.5rem;
+  }
+
+  .book-name {
+    font-size: 0.9rem;
+  }
+
+  .btn-claim {
+    font-size: 0.8rem;
+    padding: 4px 9px;
+  }
+
+  .claimed-tag {
+    font-size: 0.78rem;
+    padding: 3px 7px;
+  }
+
+  /* Floating Bar on Mobile */
+  .batch-bar {
+    bottom: 12px;
+    width: calc(100% - 20px);
+    max-width: 100%;
+    padding: 0.6rem 0.85rem;
+    gap: 0.5rem;
+    justify-content: space-between;
+    font-size: 0.85rem;
+  }
+
+  .btn-batch-claim, .btn-batch-merge {
+    padding: 0.45rem 0.85rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+
+  /* Lightbox on Mobile */
+  .lightbox-toolbar {
+    padding: 0.5rem 0.75rem;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+
+  .lightbox-title {
+    font-size: 0.9rem;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .lightbox-controls {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .lightbox-btn {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.78rem;
+  }
+
+  .lightbox-btn.close {
+    background: #ef4444;
+  }
+
+  /* Modals on Mobile */
+  .modal-card {
+    padding: 1.25rem 1rem;
+    max-height: 88vh;
+    overflow-y: auto;
+  }
+
+  .modal-title {
+    font-size: 1.15rem;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .btn-submit, .btn-whatsapp {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Tables on Mobile */
+  .styled-table th, .styled-table td {
+    padding: 0.5rem 0.6rem;
+    font-size: 0.82rem;
+  }
+
+  .table-thumb {
+    width: 40px;
+    height: 40px;
   }
 }

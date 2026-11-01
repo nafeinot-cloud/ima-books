@@ -1190,6 +1190,61 @@ function initLightbox() {
     viewport.classList.remove('panning');
   });
 
+  // Mobile Touch Support: Drag, Pinch-to-Zoom & Double-Tap
+  let touchStartDist = 0;
+  let initialZoom = 1;
+  let touchStartX = 0, touchStartY = 0;
+  let lastTapTime = 0;
+
+  viewport.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      touchStartDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      initialZoom = currentZoom;
+    } else if (e.touches.length === 1) {
+      // Check for double-tap
+      const now = Date.now();
+      if (now - lastTapTime < 300) {
+        if (currentZoom === 1) {
+          zoomIn(1.0);
+        } else {
+          resetZoom();
+        }
+        lastTapTime = 0;
+        return;
+      }
+      lastTapTime = now;
+
+      if (currentZoom > 1) {
+        isPanning = true;
+        touchStartX = e.touches[0].clientX - translateX;
+        touchStartY = e.touches[0].clientY - translateY;
+      }
+    }
+  }, { passive: true });
+
+  viewport.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2 && touchStartDist > 0) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      currentZoom = Math.min(Math.max(initialZoom * (dist / touchStartDist), 0.8), 4.0);
+      applyImageTransform();
+    } else if (e.touches.length === 1 && isPanning) {
+      translateX = e.touches[0].clientX - touchStartX;
+      translateY = e.touches[0].clientY - touchStartY;
+      applyImageTransform();
+    }
+  }, { passive: true });
+
+  viewport.addEventListener('touchend', (e) => {
+    if (e.touches.length < 2) touchStartDist = 0;
+    if (e.touches.length === 0) isPanning = false;
+  });
+
   // Close when clicking empty space in viewport
   viewport.addEventListener('click', (e) => {
     if (e.target === viewport || e.target.id === 'lightbox-container') {
