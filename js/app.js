@@ -51,7 +51,7 @@
     return `<li class="item" data-id="${i.id}"><label>
       <input type="checkbox" data-id="${i.id}" aria-label="בחירת ${esc(i.title)}">
       <span class="txt"><span class="title">${esc(i.title)}</span>${i.author ? `<span class="sub"> · ${esc(i.author)}</span>` : ''}
-        <span class="meta"><span class="badge free" data-status>פנוי</span>${badges(i)}<span class="sub">${esc(i.category)}</span>${flat ? ` <button type="button" class="shelf-link" data-shelf="${shelf.id}">${esc(shelf.name)} ←</button>` : ''}</span></span>
+        ${i.desc ? `<span class="desc">${esc(i.desc)}</span>` : ''}<span class="meta"><span class="badge free" data-status>פנוי</span>${badges(i)}<span class="sub">${esc(i.category)}</span>${flat ? ` <button type="button" class="shelf-link" data-shelf="${shelf.id}">${esc(shelf.name)} ←</button>` : ''}</span></span>
     </label></li>`;
   }
   function buildShelves() {
@@ -64,10 +64,12 @@
           <div class="shelf-head"><h3>${esc(s.name)}</h3><span class="shelf-count" data-count></span></div>
           <div class="shelf-body">
             <button type="button" class="shelf-img" data-zoom="${s.id}" aria-label="הגדלת תמונת המדף: ${esc(s.name)}">
-              <img src="${s.image}" loading="lazy" alt=""><span class="zoom" aria-hidden="true">הגדלה</span>
+              <img src="${s.image}" width="${s.w}" height="${s.h}" loading="lazy" alt=""><span class="zoom" aria-hidden="true">הגדלה</span>
             </button>
-            <ul class="items">${s.items.map((id) => itemRow(itemById[id], false)).join('')}</ul>
-          </div></article>`;
+          </div>
+          <p class="shelf-note">הספרים שבתמונה זו (${s.items.length}):</p>
+          <ul class="items">${s.items.map((id) => itemRow(itemById[id], false)).join('')}</ul>
+          </article>`;
       });
       html += '</section>';
     });
@@ -306,7 +308,7 @@
   }
   // גובה סרגל הכלים (דביק) משמש ל-scroll-margin
   function measureToolbar() {
-    const t = $('.toolbar'); if (t) document.documentElement.style.setProperty('--toolbar-h', t.offsetHeight + 'px');
+    const t = $('.toolbar'); if (t) document.documentElement.style.setProperty('--toolbar-h', (getComputedStyle(t).position === 'sticky' ? t.offsetHeight : 0) + 'px');
   }
 
   /* ---------- Lightbox ---------- */
@@ -400,6 +402,7 @@
     $('#sel-send').addEventListener('click', openRequest);
     $('#req-form').addEventListener('submit', submitRequest);
     $('#mine-btn').addEventListener('click', openMine);
+    $('#forget-contact').addEventListener('click', () => { try { localStorage.removeItem(CONTACT_KEY); } catch (e) { /* ignore */ } ['f-name', 'f-phone', 'f-email'].forEach((id) => { $('#' + id).value = ''; }); toast('הפרטים השמורים נמחקו'); });
     document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshStates(); });
     // במסך רחב פותחים את "עוד סינון" כברירת מחדל
     const more = $('#more'); const mq = window.matchMedia('(min-width: 641px)');

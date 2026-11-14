@@ -266,3 +266,27 @@ html { scroll-padding-top: calc(var(--toolbar-h) + 8px); }
 .toolbar .row, .chips { min-width: 0; }
 .search { flex: 1 1 0; min-width: 140px; }
 .mine-btn, .seg { flex: none; }
+
+/* ---- תיקוני נייד שנמצאו בבדיקה על טלפון אמיתי ---- */
+.shelf-img { display: flex; align-items: center; justify-content: center; line-height: 0; }
+.shelf-img img { flex: none; }
+@media (max-width: 640px) {
+  .toolbar { position: static; }          /* לא דביק בנייד: לא אוכל מסך */
+  .chips-row { flex-wrap: wrap; }
+  .chips { flex-wrap: wrap; overflow: visible; flex: 1 1 100%; }
+  .seg { margin-inline-start: 0; }
+  html { scroll-padding-top: 8px; }
+}
+
+/* ---- פריסה: תמונת המדף למעלה, כל הספרים שבה מתחתיה ---- */
+.shelf-body { display: block; }
+.shelf-img { position: relative; top: auto; align-self: auto; }
+.shelf-img img { max-height: 340px; }
+.shelf-note { margin: 0; padding: 12px 16px 4px; color: var(--muted); font-size: .92rem; border-top: 1px solid var(--line); }
+.desc { display: block; color: var(--muted); font-size: .85rem; }
+@media (min-width: 900px) {
+  .shelf-body { display: block; }
+  .shelf-img img { max-height: 420px; }
+  .items { display: grid; grid-template-columns: 1fr 1fr; column-gap: 0; }
+  .item:nth-child(2) { border-top: 0; }
+}
