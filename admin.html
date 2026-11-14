@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>ניהול – ספרי אמא ז״ל</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    body { padding-bottom: 40px; }
+    .admin-wrap { max-width: 980px; margin: 0 auto; padding: 18px 14px; }
+    .admin-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+    .card b { display: block; font-size: 1.6rem; color: var(--brand); }
+    .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 14px; }
+    .person h3 { font-size: 1.05rem; }
+    .person .contact { color: var(--muted); font-size: .92rem; display: flex; gap: 12px; flex-wrap: wrap; margin: 4px 0 8px; }
+    .person .contact a { color: var(--brand); }
+    .pitem { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; border-top: 1px solid var(--line); padding: 8px 0; }
+    .pitem .btns { display: flex; gap: 6px; flex-wrap: wrap; }
+    .btn.small { padding: 5px 11px; font-size: .88rem; }
+    .login { max-width: 380px; margin: 60px auto; }
+    .tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+    .free-list { columns: 2 280px; padding-inline-start: 18px; }
+    @media print { .admin-head .row, .tabs, .no-print { display: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="demo-banner" id="demo-banner" hidden>מצב הדגמה: מסך הניהול מציג את נתוני ההדגמה של הדפדפן הזה, בלי התחברות.</div>
+
+  <div class="admin-wrap" id="login-wrap" hidden>
+    <form class="panel login" id="login-form">
+      <h1 style="font-size:1.3rem;margin-bottom:12px">כניסת מנהל</h1>
+      <div class="field"><label for="a-email">מייל</label><input id="a-email" type="email" autocomplete="username" required dir="ltr" style="text-align:right"></div>
+      <div class="field"><label for="a-pass">סיסמה</label><input id="a-pass" type="password" autocomplete="current-password" required></div>
+      <div class="err" id="a-err" role="alert"></div>
+      <button class="btn primary" type="submit">כניסה</button>
+    </form>
+  </div>
+
+  <div class="admin-wrap" id="admin-wrap" hidden>
+    <div class="admin-head">
+      <h1 style="font-size:1.4rem">ניהול בקשות</h1>
+      <div class="row no-print">
+        <a class="btn" href="index.html">לאתר</a>
+        <button class="btn" type="button" id="refresh">רענון</button>
+        <button class="btn" type="button" id="export">ייצוא CSV</button>
+        <button class="btn" type="button" onclick="window.print()">הדפסה</button>
+        <button class="btn" type="button" id="logout" hidden>יציאה</button>
+        <button class="btn danger" type="button" id="demo-reset" hidden>איפוס נתוני הדגמה</button>
+      </div>
+    </div>
+
+    <div class="cards" aria-live="polite">
+      <div class="card"><b id="c-people">0</b>אנשים ביקשו</div>
+      <div class="card"><b id="c-reserved">0</b>פריטים שמורים</div>
+      <div class="card"><b id="c-collected">0</b>פריטים נמסרו</div>
+      <div class="card"><b id="c-free">0</b>פריטים פנויים</div>
+    </div>
+
+    <div class="panel no-print">
+      <div class="row">
+        <label for="limit"><b>מגבלת פריטים לאדם</b> (0 = ללא מגבלה):</label>
+        <input id="limit" type="number" min="0" max="200" class="select" style="width:90px">
+        <button class="btn" type="button" id="limit-save">שמירה</button>
+        <span class="hint" id="limit-msg" aria-live="polite"></span>
+      </div>
+      <p class="hint" style="margin:6px 0 0">מפעילים בשלב 2 אם מתחילים לראות סימון מופרז. המגבלה נספרת לפי מספר הטלפון.</p>
+    </div>
+
+    <div class="tabs no-print" role="group" aria-label="תצוגה">
+      <button class="chip" type="button" id="tab-people" aria-pressed="true">לפי אנשים</button>
+      <button class="chip" type="button" id="tab-free" aria-pressed="false">ספרים פנויים</button>
+      <input id="a-search" type="search" class="select" placeholder="חיפוש שם / טלפון" style="min-width:200px" aria-label="חיפוש">
+    </div>
+
+    <div id="people"></div>
+    <div id="free" hidden></div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="js/config.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

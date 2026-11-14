@@ -1,0 +1,15 @@
+# קבצים פרטיים וכלי עזר: לא מפרסמים
+new_photos/
+old_site_backup/
+publish_ready/
+site/
+review_crops/
+review.html
+review2.html
+catalog_draft.json
+catalog_reviewed.json
+shelves.json
+tools/
+PRD.md
+מה_לעשות_עכשיו.md
+.claude/

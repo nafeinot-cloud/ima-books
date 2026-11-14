@@ -2,451 +2,168 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>קטלוג ספרי אמא ז״ל - חלוקה למשפחה</title>
-  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>ספרי אמא ז״ל – מחכים לבית חדש</title>
+  <meta name="description" content="קטלוג הספרים שנשארו מבית אמא ז״ל. עיינו, בחרו ושלחו בקשה.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#5a3a22">
+  <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+  <a class="skip" href="#app">דלג לתוכן</a>
+  <noscript><p style="padding:24px;text-align:center">האתר דורש JavaScript. נא לפתוח אותו בדפדפן עדכני.</p></noscript>
 
-  <!-- Site Header -->
-  <header class="site-header">
-    <div class="header-content">
-      <div class="site-badge">לעילוי נשמת אמא ז״ל • חלוקה למשפחה</div>
-      <h1 class="site-title">חלוקת ספרי אמא ז״ל</h1>
-      <p class="site-subtitle">
-        בני משפחה יקרים, מוזמנים לעיין בספרי הארגזים, לראות את התמונות ולסמן את הספרים שתרצו לקחת.
-        כל ספר שימשיכו לקרוא וללמוד בו הוא זכות גדולה לעילוי נשמתה.
-      </p>
-
-      <div class="stats-bar">
-        <div class="stat-item">📦 ארגזים: <strong id="stat-boxes">0</strong></div>
-        <div class="stat-item">📚 סה״כ ספרים: <strong id="stat-books">0</strong></div>
-        <div class="stat-item">🖐️ נבחרו: <strong id="stat-claimed">0</strong></div>
-        <div class="stat-item">✨ פנויים: <strong id="stat-available">0</strong></div>
-      </div>
-
-      <div class="header-actions">
-        <button class="btn-header" id="btn-toggle-edit-mode">
-          ✏️ מצב עריכה (כבוי)
-        </button>
-        <button class="btn-header" id="btn-download-updated-data" title="שמור את כל התיקונים והתוספות לקובץ נתונים חדש">
-          💾 הורד קובץ נתונים מעודכן (books_data.js)
-        </button>
+  <header class="hero">
+    <div class="hero-inner">
+      <p class="eyebrow">לעילוי נשמת אמנו וסבתנו <b>רבקה בת אברהם ז״ל</b><br>ולעילוי נשמת אבינו וסבנו <b>ישראל בן משה יוסף ז״ל</b></p>
+      <h1>ספרי אמא ז״ל מחכים לבית חדש</h1>
+      <p class="lead">אלה הספרים שנשארו בבית. בחרו ספר או סט שלם ושלחו בקשה, ואחזור אליכם לתיאום איסוף מהבית. כל ספר שממשיכים ללמוד בו הוא לעילוי נשמתם.</p>
+      <ol class="how">
+        <li><b>1</b>עיינו לפי מדפים</li>
+        <li><b>2</b>סמנו מה שמעניין</li>
+        <li><b>3</b>שלחו בקשה</li>
+      </ol>
+      <div class="stats">
+        <span><strong id="stat-free">–</strong> פריטים פנויים</span>
+        <span><strong id="stat-total">–</strong> בקטלוג</span>
+        <span>כ-<strong id="stat-vols">–</strong> כרכים</span>
       </div>
     </div>
   </header>
 
-  <!-- Navigation Tabs -->
-  <nav class="nav-tabs">
-    <button class="tab-btn active" data-tab="boxes">
-      📦 ספרים לפי ארגזים
-      <span class="tab-badge" id="badge-boxes-count">0</span>
-    </button>
-    <button class="tab-btn" data-tab="all-books">
-      📚 כל הספרים (רשימה)
-      <span class="tab-badge" id="badge-all-count">0</span>
-    </button>
-    <button class="tab-btn" data-tab="summary">
-      📋 ריכוז בקשות (מי לוקח מה)
-      <span class="tab-badge" id="badge-summary-count">0</span>
-    </button>
-    <button class="tab-btn" data-tab="settings">
-      ⚙️ סנכרון ענן (Google Sheets)
-    </button>
-  </nav>
+  <div class="demo-banner" id="demo-banner" hidden>מצב הדגמה: הנתונים נשמרים רק בדפדפן הזה ואינם נשלחים לאף אחד.</div>
+  <div class="net-banner" id="net-banner" role="alert" hidden>לא הצלחנו לרענן את הרשימה. ייתכן שחלק מהספרים כבר נשמרו. מנסים שוב.</div>
 
-  <!-- Search & Filter Controls -->
-  <div class="controls-container" id="main-controls">
-    <div class="search-wrapper">
-      <span class="search-icon">🔍</span>
-      <input type="text" id="search-input" class="search-input" placeholder="חיפוש ספר, מחבר, נושא או מספר ארגז...">
-    </div>
-    <div class="filter-group">
-      <button class="filter-btn active" data-filter="all">הכל</button>
-      <button class="filter-btn" data-filter="available">ספרים פנויים בלבד</button>
-      <button class="filter-btn" data-filter="sets">📦 סטים שלמים בלבד</button>
-      <button class="filter-btn" data-filter="claimed">ספרים שנבחרו</button>
-    </div>
-
-    <div class="filter-user-group" id="filter-user-container">
-      <div class="filter-user-select-wrap">
-        <select id="filter-claimer-select" class="filter-user-select" aria-label="סינון לפי שם בוחר">
-          <option value="">👤 כל הבוחרים (הכל)</option>
-        </select>
+  <div class="toolbar" role="search" aria-label="חיפוש וסינון">
+    <div class="toolbar-inner">
+      <div class="row">
+        <div class="search">
+          <label for="q" class="sr-only">חיפוש</label>
+          <input id="q" type="search" placeholder="חיפוש לפי שם ספר או מחבר" autocomplete="off" enterkeyhint="search">
+          <svg class="ico" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        </div>
+        <button class="btn small mine-btn" type="button" id="mine-btn" hidden>הבקשות שלי (<span id="mine-count">0</span>)</button>
       </div>
-      <button type="button" id="btn-filter-my-books" class="btn-my-books" style="display: none;" title="הצג רק ספרים שאני בחרתי">
-        🙋‍♂️ הספרים שלי
-      </button>
+      <div class="row chips-row">
+        <div class="chips" role="group" aria-label="סינון">
+          <button class="chip" type="button" data-filter="all" aria-pressed="true">הכול</button>
+          <button class="chip" type="button" data-filter="free" aria-pressed="false">פנויים בלבד</button>
+          <button class="chip" type="button" data-filter="set" aria-pressed="false">סטים שלמים</button>
+        </div>
+        <div class="seg" role="group" aria-label="תצוגה">
+          <button type="button" id="view-shelves" aria-pressed="true">מדפים</button>
+          <button type="button" id="view-list" aria-pressed="false">רשימה</button>
+        </div>
+      </div>
+      <details class="more" id="more">
+        <summary>עוד אפשרויות סינון</summary>
+        <div class="row">
+          <label class="sr-only" for="sel-group">מיקום</label>
+          <select class="select" id="sel-group"><option value="">כל המקומות</option></select>
+          <label class="sr-only" for="sel-cat">נושא</label>
+          <select class="select" id="sel-cat"><option value="">כל הנושאים</option></select>
+          <button class="btn-link" type="button" id="reset" hidden>ניקוי סינון</button>
+        </div>
+      </details>
     </div>
   </div>
 
-  <!-- Active Filter Notification Banner -->
-  <div id="active-filter-indicator" class="active-filter-banner hidden">
-    <span>🔍 מציג ספרים שנבחרו ע״י: <strong id="active-filter-name"></strong></span>
-    <button type="button" class="btn-clear-user-filter" onclick="clearClaimerFilter()">✕ הצג את כל הספרים</button>
-  </div>
-
-  <!-- Main Container -->
-  <main class="main-container">
-    
-    <!-- View 1: Boxes Grid -->
-    <section id="view-boxes" class="tab-view">
-      <div id="boxes-container" class="boxes-grid">
-        <!-- Rendered by JS -->
-      </div>
-    </section>
-
-    <!-- View 2: All Books List -->
-    <section id="view-all-books" class="tab-view hidden">
-      <div class="summary-container">
-        <div class="summary-header">
-          <h2 class="summary-title">רשימת כל הספרים</h2>
-          <div id="all-books-count-text" style="color: var(--text-muted);"></div>
-        </div>
-        <div class="table-responsive">
-          <table class="styled-table" id="all-books-table">
-            <thead>
-              <tr>
-                <th style="width: 60px;">ארגז</th>
-                <th style="width: 70px;">תמונה</th>
-                <th>שם הספר</th>
-                <th>מחבר / הערות</th>
-                <th>סטטוס</th>
-                <th style="width: 140px;">פעולה</th>
-              </tr>
-            </thead>
-            <tbody id="all-books-tbody">
-              <!-- Rendered by JS -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- View 3: Summary Table (Who took what) -->
-    <section id="view-summary" class="tab-view hidden">
-      <div class="summary-container">
-        <div class="summary-header">
-          <div>
-            <h2 class="summary-title">ריכוז כל הבקשות (מי לוקח מה)</h2>
-            <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">
-              רשימת הספרים שנבחרו על ידי בני המשפחה. ניתן להוריד לאקסל או להדפיס.
-            </p>
-          </div>
-          <div class="table-actions">
-            <button class="btn-action primary" id="btn-export-csv">📥 הורדה לאקסל (CSV)</button>
-            <button class="btn-action" onclick="window.print()">🖨️ הדפסה</button>
-          </div>
-        </div>
-
-        <div style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-          <input type="text" id="summary-filter-user" class="form-input" style="max-width: 200px;" placeholder="חיפוש לפי שם...">
-          <select id="summary-user-select" class="form-input" style="max-width: 180px; height: 38px;">
-            <option value="">כל בני המשפחה</option>
-          </select>
-          <div id="summary-user-pills" style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;"></div>
-        </div>
-
-        <div class="table-responsive">
-          <table class="styled-table">
-            <thead>
-              <tr>
-                <th style="width: 130px;">תאריך ושעה</th>
-                <th style="width: 80px;">ארגז</th>
-                <th style="width: 60px;">תמונה</th>
-                <th>שם הספר</th>
-                <th>נבחר על ידי</th>
-                <th>טלפון / הערות</th>
-                <th style="width: 80px;">ביטול</th>
-              </tr>
-            </thead>
-            <tbody id="summary-tbody">
-              <!-- Rendered by JS -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- View 4: Cloud Settings (Google Sheets) -->
-    <section id="view-settings" class="tab-view hidden">
-      <div class="summary-container" style="max-width: 800px; margin: 0 auto;">
-        <h2 class="summary-title">סנכרון ענן בזמן אמת עם Google Sheets</h2>
-        <p style="color: var(--text-muted); margin: 0.75rem 0 1.25rem;">
-          כאשר האתר מועלה ל-GitHub Pages, חיבור ל-Google Sheets מאפשר לכל בן משפחה מהנייד שלו לסמן ספר – וזה יתעדכן מיד אצלך בגיליון אקסל בגוגל דרייב ובאתר של כולם!
-        </p>
-
-        <div class="form-group">
-          <label for="settings-sheet-url">כתובת Web App של Google Apps Script:</label>
-          <input type="url" id="settings-sheet-url" class="form-input" value="https://script.google.com/macros/s/AKfycbyQ35FfKv6vkvZj7iibAzAJIFVyKBHGzT34yQC0lOQ2xwv72E2qm1wG_gxpZU8Hw00/exec" placeholder="https://script.google.com/macros/s/.../exec">
-          <small style="color: var(--success); font-weight: 600; display: block; margin-top: 4px;">
-            ✓ מחובר לענן המשפחתי (Google Sheets) — כל בחירה מסתנכרנת אוטומטית בין כל המכשירים!
-          </small>
-        </div>
-
-        <div style="display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
-          <button class="btn-action primary" id="btn-save-settings">💾 שמור הגדרות</button>
-          <button class="btn-action" id="btn-sync-now">🔄 סנכרן מול Google Sheets</button>
-          <button class="btn-action" style="background: #059669; color: #fff; border-color: #059669;" onclick="uploadAllLocalClaimsToCloud()">📤 העלה את כל הסימונים הקיימים שלי לענן</button>
-        </div>
-
-        <div style="margin-top: 2rem; background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem;">
-          <h3 style="font-size: 1.05rem; margin-bottom: 0.5rem; color: var(--primary);">מדריך מהיר להגדרת Google Sheets (2 דקות):</h3>
-          <ol style="padding-right: 1.25rem; font-size: 0.92rem; line-height: 1.8;">
-            <li>פתח גיליון חדש ב-Google Sheets.</li>
-            <li>בשורה הראשונה כתוב עמודות: <strong>תאריך | מס' ארגז | שם הספר | נבחר ע״י | טלפון | הערות</strong></li>
-            <li>לחץ בתפריט העליון על <strong>Extensions -> Apps Script</strong> (הרחבות -> Apps Script).</li>
-            <li>העתק את תוכן הקובץ <code>google_apps_script.js</code> (נמצא בתיקייה) והדבק שם.</li>
-            <li>לחץ על <strong>Deploy -> New deployment</strong>, בחר <strong>Web app</strong>, ובהגדרה <em>Who has access</em> בחר <strong>Anyone</strong>.</li>
-            <li>העתק את כתובת ה-Web app והדבק אותה בשדה כאן למעלה ולחץ "שמור הגדרות"!</li>
-          </ol>
-        </div>
-      </div>
-    </section>
-
+  <main id="app" tabindex="-1">
+    <div id="shelves-view"></div>
+    <div id="list-view" class="flat" hidden></div>
+    <p class="empty" id="empty" hidden>לא מצאנו ספרים שמתאימים. נסו מילה אחרת, או הציגו את כולם.<br><button class="btn" type="button" id="empty-reset">הצג את כל הספרים</button></p>
   </main>
 
-  <!-- Claim Modal -->
-  <div id="claim-modal" class="modal-backdrop hidden">
-    <div class="modal-card">
-      <button class="modal-close" id="btn-close-modal">&times;</button>
-      <div class="modal-header">
-        <div class="modal-title">אני מעוניין/ת בספר זה</div>
-        <div class="modal-book-name" id="modal-book-title">שם הספר</div>
-        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;" id="modal-box-info">ארגז מס' 1</div>
-      </div>
+  <footer>
+    <p>האתר נבנה באהבה לעילוי נשמת רבקה בת אברהם ז״ל וישראל בן משה יוסף ז״ל.<br>הפרטים שתשאירו ישמשו אך ורק לתיאום איסוף הספרים.</p>
+  </footer>
 
-      <form id="claim-form">
-        <input type="hidden" id="modal-box-id">
-        <input type="hidden" id="modal-book-id">
-        <input type="hidden" id="modal-book-exact-title">
-
-        <div class="form-group">
-          <label for="claim-name">שמך המלא *</label>
-          <input type="text" id="claim-name" class="form-input" required placeholder="למשל: דני כהן (בן / נכד...)">
-        </div>
-
-        <div class="form-group">
-          <label for="claim-phone">טלפון או הערה (אופציונלי)</label>
-          <input type="text" id="claim-phone" class="form-input" placeholder="מספר נייד או הערה">
-        </div>
-
-        <div class="modal-actions">
-          <button type="submit" class="btn-submit">✅ שמור בחירה</button>
-          <a href="#" id="modal-whatsapp-link" target="_blank" class="btn-whatsapp hidden">
-            💬 הודע בוואטסאפ
-          </a>
-        </div>
-      </form>
+  <div class="selbar" id="selbar" hidden>
+    <div class="selbar-inner">
+      <span class="count" aria-live="polite" id="sel-text">נבחרו 0 פריטים</span>
+      <span class="row">
+        <button class="btn" type="button" id="sel-clear">נקו בחירה</button>
+        <button class="btn primary" type="button" id="sel-send">שלחו בקשה</button>
+      </span>
     </div>
   </div>
 
-  <!-- Edit Claim / Change Person Modal -->
-  <div id="edit-claim-modal" class="modal-backdrop hidden">
-    <div class="modal-card">
-      <button class="modal-close" onclick="closeEditClaimModal()">&times;</button>
-      <div class="modal-header">
-        <div class="modal-title">עריכת פרטי מבקש / החלפת שם</div>
-        <div class="modal-book-name" id="edit-claim-book-title">שם הספר</div>
-        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;" id="edit-claim-box-info">ארגז מס' 1</div>
-      </div>
-
-      <form id="edit-claim-form">
-        <input type="hidden" id="edit-claim-id">
-
-        <div class="form-group">
-          <label for="edit-claim-user-name">נרשם על שם (שם בן המשפחה) *</label>
-          <input type="text" id="edit-claim-user-name" class="form-input" required placeholder="למשל: דני כהן">
-        </div>
-
-        <div class="form-group">
-          <label for="edit-claim-user-phone">טלפון או הערות (אופציונלי)</label>
-          <input type="text" id="edit-claim-user-phone" class="form-input" placeholder="מספר נייד או הערה">
-        </div>
-
-        <div class="modal-actions" style="flex-wrap: wrap;">
-          <button type="submit" class="btn-submit">💾 שמור שינויים</button>
-          <button type="button" class="btn-action" style="color: var(--danger); border-color: #fca5a5;" onclick="deleteCurrentClaim()">🗑️ בטל רישום ושחרר ספר</button>
-          <button type="button" class="btn-action" onclick="closeEditClaimModal()">סגור</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Edit Book / Box Modal -->
-  <div id="edit-modal" class="modal-backdrop hidden">
-    <div class="modal-card">
-      <button class="modal-close" onclick="closeEditModal()">&times;</button>
-      <div class="modal-header">
-        <div class="modal-title" id="edit-modal-title">עריכת פריט</div>
-      </div>
-
-      <form id="edit-form">
-        <input type="hidden" id="edit-type"> <!-- 'book' or 'box' -->
-        <input type="hidden" id="edit-box-id">
-        <input type="hidden" id="edit-book-id">
-
-        <div id="edit-book-fields">
-          <div class="form-group">
-            <label for="edit-book-title">שם הספר / הכותרת *</label>
-            <input type="text" id="edit-book-title" class="form-input" required>
+  <!-- בקשה -->
+  <dialog id="request-dialog" aria-labelledby="req-title">
+    <div class="dlg">
+      <button class="x" type="button" data-close aria-label="סגירה">×</button>
+      <div id="req-form-wrap">
+        <h2 id="req-title" tabindex="-1">שליחת בקשה</h2>
+        <p class="hint">הספרים שבחרתם יישמרו עבורכם. אחזור אליכם לתיאום איסוף מהבית.</p>
+        <p class="notice warn" id="req-limit" hidden></p>
+        <ul class="chosen" id="req-list"></ul>
+        <form id="req-form" novalidate>
+          <div class="field">
+            <label for="f-name">שם מלא *</label>
+            <input id="f-name" name="name" autocomplete="name" required maxlength="80">
+            <div class="err" id="e-name" aria-live="polite"></div>
           </div>
-
-          <div class="form-group">
-            <label for="edit-book-author">מחבר / כרכים / פירוט נוסף</label>
-            <input type="text" id="edit-book-author" class="form-input">
+          <div class="field">
+            <label for="f-phone">טלפון *</label>
+            <input id="f-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" required maxlength="20" placeholder="050-1234567" dir="ltr" class="ltr">
+            <div class="err" id="e-phone" aria-live="polite"></div>
           </div>
-
-          <div class="form-group" style="margin-top: 0.75rem;">
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-              <input type="checkbox" id="edit-book-is-set" style="width: 18px; height: 18px;">
-              <span><strong>📦 זהו סט שלם (נמסר כיחידה אחת ולא כבודדים)</strong></span>
-            </label>
+          <div class="field">
+            <label for="f-email">מייל (לא חובה)</label>
+            <input id="f-email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="120" dir="ltr" class="ltr">
+            <div class="err" id="e-email" aria-live="polite"></div>
           </div>
-        </div>
-
-        <div id="edit-box-fields" class="hidden">
-          <div class="form-group">
-            <label for="edit-box-category">תיאור / נושא הארגז (יוצג בכותרת)</label>
-            <input type="text" id="edit-box-category" class="form-input" placeholder="למשל: ספרי רמב״ם, ספרי מוסר, ספרי ילדים">
+          <div class="field">
+            <label for="f-note">הערה (לא חובה)</label>
+            <textarea id="f-note" name="note" rows="2" maxlength="300"></textarea>
           </div>
-        </div>
-
-        <div class="modal-actions" style="flex-wrap: wrap;">
-          <button type="submit" class="btn-submit">💾 שמור שינויים</button>
-          <button type="button" class="btn-action" id="btn-delete-from-edit-modal" style="color: var(--danger); border-color: #fca5a5; display: none;" onclick="deleteBookFromModal()">🗑️ מחק ספר מהארגז</button>
-          <button type="button" class="btn-action" onclick="closeEditModal()">ביטול</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Upgraded Fullscreen Lightbox with Zoom & Rotate -->
-  <div id="lightbox-modal" class="lightbox-modal hidden">
-    <div class="lightbox-toolbar">
-      <div class="lightbox-title" id="lightbox-caption">תמונת ארגז</div>
-      <div class="lightbox-controls">
-        <button class="lightbox-btn" onclick="zoomIn()" title="הגדל (או השתמש בגלגלת העכבר)">➕ הגדל</button>
-        <button class="lightbox-btn" onclick="zoomOut()" title="הקטן">➖ הקטן</button>
-        <button class="lightbox-btn" onclick="rotateImage()" title="סובב 90 מעלות">🔄 סובב</button>
-        <button class="lightbox-btn" onclick="resetZoom()" title="איפוס גודל וסיבוב">⟲ איפוס</button>
-        <a id="lightbox-external-link" href="#" target="_blank" class="lightbox-btn" title="פתח תמונה בחלון נפרד">↗ פתח בחלון חדש</a>
-        <button class="lightbox-btn close" onclick="closeLightbox()">✕ סגור</button>
-      </div>
-    </div>
-    <div class="lightbox-viewport" id="lightbox-viewport">
-      <div class="lightbox-image-container" id="lightbox-container">
-        <img id="lightbox-img" class="lightbox-img-element" src="" alt="תמונת ארגז">
-      </div>
-    </div>
-  </div>
-
-  <!-- Toast Notification -->
-  <div id="toast" class="toast">הבחירה נשמרה בהצלחה!</div>
-
-  <!-- Floating Batch Action Bar -->
-  <div id="batch-action-bar" class="batch-bar hidden">
-    <div>נבחרו <strong id="batch-count" class="batch-count">0</strong> פריטים</div>
-    <button class="btn-batch-merge" id="btn-batch-merge-set" onclick="openMergeSetModal()">📦 הגדר / הוסף לסט</button>
-    <button class="btn-batch-claim" onclick="openBatchClaimModal()">🖐️ אני מעוניין/ת בכולם יחד</button>
-    <button class="btn-batch-clear" onclick="clearBatchSelection()">נקה בחירה</button>
-  </div>
-
-  <!-- Merge Set Modal (In Edit Mode) -->
-  <div id="merge-set-modal" class="modal-backdrop hidden">
-    <div class="modal-card" style="max-width: 520px;">
-      <button class="modal-close" onclick="closeMergeSetModal()">&times;</button>
-      <div class="modal-header">
-        <div class="modal-title">הגדרה / הוספה לסט שלם</div>
-        <div style="font-size: 0.88rem; color: var(--text-muted); margin-top: 4px;">
-          ניתן לאחד את הפריטים שנבחרו לסט חדש, או לצרף אותם לסט קיים בארגז.
-        </div>
-      </div>
-
-      <form id="merge-set-form">
-        <div class="form-group" id="merge-target-mode-group">
-          <label for="merge-target-mode">סוג פעולה:</label>
-          <select id="merge-target-mode" class="form-input" onchange="toggleMergeMode(this.value)">
-            <option value="new">✨ צור סט חדש מהספרים שנבחרו</option>
-            <option value="existing">➕ הוסף ספרים אלו לסט קיים</option>
-          </select>
-        </div>
-
-        <div class="form-group hidden" id="merge-existing-select-group">
-          <label for="merge-existing-set-select">בחר לאיזה סט להוסיף אותם:</label>
-          <select id="merge-existing-set-select" class="form-input">
-            <!-- Populated by JS -->
-          </select>
-        </div>
-
-        <div id="merge-new-set-fields">
-          <div class="form-group">
-            <label for="merge-set-title">שם הסט *</label>
-            <input type="text" id="merge-set-title" class="form-input" placeholder="למשל: סדרת דעת מקרא (סט שלם)">
+          <div class="hp" aria-hidden="true"><label>אל תמלאו שדה זה<input type="text" name="website" id="f-website" tabindex="-1" autocomplete="off"></label></div>
+          <div class="err" id="e-form" role="alert"></div>
+          <div class="actions">
+            <button class="btn primary" type="submit" id="req-submit">שלחו בקשה</button>
+            <button class="btn" type="button" data-close>ביטול</button>
           </div>
-
-          <div class="form-group">
-            <label for="merge-set-author">מחבר / הוצאה (אופציונלי)</label>
-            <input type="text" id="merge-set-author" class="form-input" placeholder="למשל: מוסד הרב קוק">
-          </div>
-        </div>
-
-        <div>
-          <label style="font-size: 0.88rem; font-weight: 600;">הספרים שנבחרו (<span id="merge-set-count">0</span>):</label>
-          <ul id="merge-set-list" class="batch-selected-list">
-            <!-- Rendered by JS -->
-          </ul>
-        </div>
-
-        <div class="modal-actions">
-          <button type="submit" class="btn-submit" style="background: #f59e0b; color: #0f172a;">📦 אשר ועדכן סט</button>
-          <button type="button" class="btn-action" onclick="closeMergeSetModal()">ביטול</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Batch Claim Modal -->
-  <div id="batch-claim-modal" class="modal-backdrop hidden">
-    <div class="modal-card" style="max-width: 520px;">
-      <button class="modal-close" onclick="closeBatchClaimModal()">&times;</button>
-      <div class="modal-header">
-        <div class="modal-title">בקשת מספר ספרים יחד</div>
-        <div style="font-size: 0.9rem; color: var(--text-muted); margin-top: 4px;">
-          כל הספרים שנבחרו יירשמו על שמך בטבלה.
-        </div>
+        </form>
       </div>
-
-      <div>
-        <label style="font-size: 0.88rem; font-weight: 600;">הספרים שנבחרו (<span id="batch-modal-count">0</span>):</label>
-        <ul id="batch-modal-list" class="batch-selected-list">
-          <!-- Rendered by JS -->
-        </ul>
-      </div>
-
-      <form id="batch-claim-form">
-        <div class="form-group">
-          <label for="batch-claim-name">שמך המלא *</label>
-          <input type="text" id="batch-claim-name" class="form-input" required placeholder="למשל: דני כהן (בן / נכד...)">
-        </div>
-
-        <div class="form-group">
-          <label for="batch-claim-phone">טלפון או הערה (אופציונלי)</label>
-          <input type="text" id="batch-claim-phone" class="form-input" placeholder="מספר נייד או הערה">
-        </div>
-
-        <div class="modal-actions">
-          <button type="submit" class="btn-submit">✅ שמור את כל הספרים על שמי</button>
-          <a href="#" id="batch-whatsapp-link" target="_blank" class="btn-whatsapp hidden">
-            💬 שלח רשימה בוואטסאפ
-          </a>
-        </div>
-      </form>
+      <div id="req-result" class="result" hidden></div>
     </div>
-  </div>
+  </dialog>
 
-  <!-- Scripts -->
-  <script src="books_data.js"></script>
-  <script src="app.js"></script>
+  <!-- הבקשות שלי -->
+  <dialog id="mine-dialog" aria-labelledby="mine-title">
+    <div class="dlg">
+      <button class="x" type="button" data-close aria-label="סגירה">×</button>
+      <h2 id="mine-title">הבקשות שלי</h2>
+      <p class="hint">הרשימה נשמרת במכשיר הזה בלבד. כדי לבטל בקשה ממכשיר אחר, פנו אליי ישירות.</p>
+      <div id="mine-list"></div>
+    </div>
+  </dialog>
+
+  <!-- תמונת מדף -->
+  <dialog id="lightbox" aria-labelledby="lb-title">
+    <div class="lb">
+      <div class="lb-bar">
+        <h2 id="lb-title"></h2>
+        <button class="btn" type="button" data-close id="lb-close" autofocus>סגירה</button>
+        <span class="lb-tools">
+          <button class="btn" type="button" id="lb-prev" aria-label="מדף קודם">›</button>
+          <button class="btn" type="button" id="lb-next" aria-label="מדף הבא">‹</button>
+          <button class="btn" type="button" id="lb-zoom-out" aria-label="הקטנה">−</button>
+          <button class="btn" type="button" id="lb-zoom-in" aria-label="הגדלה">+</button>
+          <button class="btn" type="button" id="lb-fit">התאמה</button>
+          <button class="btn" type="button" id="lb-goto">לרשימת הספרים</button>
+        </span>
+      </div>
+      <div class="lb-stage" id="lb-stage"><img id="lb-img" alt=""></div>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
