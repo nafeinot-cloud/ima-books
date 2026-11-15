@@ -145,7 +145,7 @@
   function updateSelBar() {
     const n = S.selected.size;
     $('#selbar').hidden = n === 0;
-    $('#sel-text').textContent = 'נבחרו ' + itemsText(n);
+    $('#sel-text').textContent = 'בסל שלי: ' + itemsText(n);
     ssSet('sel', Array.from(S.selected));
   }
   function toggleSelect(id, on) {
@@ -247,7 +247,7 @@
         ? 'הדפדפן חוסם שמירת נתונים (אולי מצב גלישה פרטית). נסו דפדפן אחר.'
         : 'לא הצלחנו לשלוח את הבקשה. בדקו את החיבור ונסו שוב. אם זה חוזר, פנו אליי ישירות.';
     } finally {
-      sending = false; btn.disabled = S.selected.size === 0; btn.textContent = 'שלחו בקשה';
+      sending = false; btn.disabled = S.selected.size === 0; btn.textContent = 'שליחת הבקשה';
     }
   }
   function showResult(res) {
@@ -260,7 +260,8 @@
         <ul>${res.claimed.map((c) => `<li>${esc(itemById[c.id].title)}</li>`).join('')}</ul>`;
       h += res.canCancel === false
         ? '<div class="notice warn">לא הצלחנו לשמור במכשיר הזה את האפשרות לבטל בעצמכם. אם תרצו לבטל, פנו אליי ישירות.</div>'
-        : '<p class="hint">אפשר לבטל בקשה בכל עת דרך "הבקשות שלי" באתר, במכשיר הזה.</p>';
+        : '<p class="hint">אפשר לבטל בקשה ולבדוק את מצבה בכל עת דרך "הבקשות שלי" באתר.</p>';
+      if (res.canCancel !== false && Api.personalLink()) h += linkBox(Api.personalLink());
     } else {
       h += '<h2 tabindex="-1" id="res-title">לא נשמר אף פריט</h2>';
     }
@@ -278,14 +279,32 @@
     const n = myList().length;
     $('#mine-btn').hidden = n === 0; $('#mine-count').textContent = n;
   }
-  function openMine() {
-    const list = myList();
-    $('#mine-list').innerHTML = list.length ? list.map((m) => {
-      const i = itemById[m.itemId]; if (!i) return '';
-      const st = stateOf(m.itemId);
-      return `<div class="mine-item"><span>${esc(i.title)}<br><span class="badge ${st}">${STATUS_TEXT[st]}</span></span>${st === 'reserved' ? `<button class="btn danger" type="button" data-cancel="${m.itemId}">בטלו בקשה</button>` : ''}</div>`;
-    }).join('') : '<p class="hint">אין בקשות פעילות.</p>';
+  const MINE_TEXT = { reserved: 'ממתין לתיאום', arranged: 'איסוף נקבע', collected: 'נמסר' };
+  function linkBox(link) {
+    return `<div class="linkbox"><b>הקישור האישי שלכם</b>
+      <p class="hint">פתחו אותו מכל מכשיר כדי לראות את מצב הבקשות. שמרו אותו (למשל שלחו לעצמכם בוואטסאפ) ואל תשתפו עם אחרים.</p>
+      <input type="text" readonly dir="ltr" class="ltr linkinput" value="${esc(link)}" aria-label="קישור אישי">
+      <button class="btn small" type="button" data-copy-link>העתקת הקישור</button></div>`;
+  }
+  async function openMine() {
+    const box = $('#mine-list');
+    box.innerHTML = '<p class="hint">טוען…</p>';
     openDialog($('#mine-dialog'));
+    let rows;
+    try { rows = (await Api.myClaims()).filter((r) => itemById[r.item_id]); }
+    catch (e) { box.innerHTML = '<p class="notice warn">לא הצלחנו לטעון את הבקשות. נסו שוב בעוד רגע.</p>'; return; }
+    // רשומות מקומיות שכבר אינן בשרת (בוטלו ע"י המנהל) מוסרות
+    Api.getMine().forEach((m) => { if (!rows.some((r) => r.item_id === m.itemId && r.token === m.token)) Api.removeMine(m.itemId); });
+    updateMine();
+    const notes = Array.from(new Set(rows.filter((r) => r.pickup_note).map((r) => r.pickup_note)));
+    let h = notes.map((n) => `<div class="notice ok"><b>הודעה לגבי האיסוף:</b> ${esc(n)}</div>`).join('');
+    h += rows.length ? rows.map((r) => {
+      const i = itemById[r.item_id];
+      return `<div class="mine-item"><span>${esc(i.title)}<br><span class="badge ${r.state}">${MINE_TEXT[r.state] || r.state}</span></span>${r.state !== 'collected' ? `<button class="btn danger" type="button" data-cancel="${r.item_id}">בטלו בקשה</button>` : ''}</div>`;
+    }).join('') : '<p class="hint">אין בקשות פעילות.</p>';
+    const link = Api.personalLink();
+    if (link && rows.length) h += linkBox(link);
+    box.innerHTML = h;
   }
 
   /* ---------- תצוגות ---------- */
@@ -377,6 +396,13 @@
   function bind() {
     document.addEventListener('change', (e) => { const cb = e.target.closest('.item input[type=checkbox]'); if (cb) toggleSelect(cb.dataset.id, cb.checked); });
     document.addEventListener('click', (e) => {
+      const c = e.target.closest('[data-copy-link]'); if (!c) return;
+      const inp = c.parentElement.querySelector('.linkinput');
+      const done = () => toast('הקישור הועתק');
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(inp.value).then(done, () => { inp.select(); toast('סמנו והעתיקו את הקישור'); });
+      else { inp.select(); try { document.execCommand('copy'); done(); } catch (err) { toast('סמנו והעתיקו את הקישור'); } }
+    });
+    document.addEventListener('click', (e) => {
       const z = e.target.closest('[data-zoom]'); if (z) { openLightbox(z.dataset.zoom); return; }
       const sl = e.target.closest('[data-shelf].shelf-link'); if (sl) { e.preventDefault(); openLightbox(sl.dataset.shelf); return; }
       const rm = e.target.closest('[data-rm]'); if (rm) { toggleSelect(rm.dataset.rm, false); renderChosen(); if (!S.selected.size) closeDialog($('#request-dialog')); return; }
@@ -419,6 +445,14 @@
     $('#demo-banner').hidden = Api.live;
     applyStates(); measureToolbar();
     refreshStates();
+    const r = new URLSearchParams(location.search).get('r');
+    if (r) {
+      Api.restoreFromTokens(r.split(',')).then(async (n) => {
+        try { history.replaceState(null, '', location.pathname); } catch (e) { /* ignore */ }
+        await refreshStates();
+        if (n) { toast('הבקשות שלכם נטענו'); openMine(); } else toast('הקישור אינו תקף, או שהבקשות כבר בוטלו');
+      }).catch(() => toast('לא הצלחנו לטעון את הבקשות מהקישור'));
+    }
     Api.getSettings().then((s) => { S.maxItems = s.maxItems || 0; }).catch(() => { /* ignore */ });
     setInterval(() => { if (!document.hidden) refreshStates(); }, ((window.SITE_CONFIG || {}).POLL_SECONDS || 25) * 1000);
   }

@@ -19,15 +19,7 @@
   --shadow: 0 1px 2px rgba(60, 40, 20, .06), 0 6px 18px rgba(60, 40, 20, .06);
   --font: "Segoe UI", "Heebo", "Arial Hebrew", Arial, system-ui, sans-serif;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #1b1611; --surface: #251e17; --ink: #f2eadf; --muted: #b9ab98; --line: #3a3027;
-    --brand: #d9b27c; --brand-ink: #20160c; --gold: #d9b27c;
-    --ok: #7fcf9f; --ok-bg: #1f3427; --warn: #e6b866; --warn-bg: #3a2d13; --bad: #f0928b; --bad-bg: #3d1f1c;
-    --sel: #3a2f14; --sel-line: #c99a35;
-    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.35);
-  }
-}
+
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; scroll-padding-top: 76px; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; animation: none !important; } }
@@ -104,7 +96,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 14px; }
 .item.unavailable .title { text-decoration: line-through; text-decoration-thickness: 1px; }
 .badge { display: inline-block; font-size: .78rem; padding: 2px 10px; border-radius: 99px; white-space: nowrap; }
 .badge.set { background: #efe6fb; color: #5b3a8c; }
-@media (prefers-color-scheme: dark) { .badge.set { background: #3a2a55; color: #d8c4f7; } }
+
 .badge.free { background: var(--ok-bg); color: var(--ok); }
 .badge.reserved { background: var(--warn-bg); color: var(--warn); }
 .badge.collected { background: var(--bad-bg); color: var(--bad); }
@@ -176,7 +168,7 @@ footer a { color: inherit; }
    שיפורים אחרי בדיקות QA ו-UI
    ============================================================ */
 :root { --ring: #8f6620; --field-line: #b9ab98; --toolbar-h: 120px; }
-@media (prefers-color-scheme: dark) { :root { --ring: #d9b27c; --field-line: #6b5d4c; } }
+
 :focus-visible { outline-color: var(--ring); }
 html { scroll-padding-top: calc(var(--toolbar-h) + 8px); }
 .shelf { scroll-margin-top: calc(var(--toolbar-h) + 10px); }
@@ -289,4 +281,90 @@ html { scroll-padding-top: calc(var(--toolbar-h) + 8px); }
   .shelf-img img { max-height: 420px; }
   .items { display: grid; grid-template-columns: 1fr 1fr; column-gap: 0; }
   .item:nth-child(2) { border-top: 0; }
+}
+
+/* ---- סל, סטטוסים וקישור אישי ---- */
+.badge.arranged { background: #e3eefc; color: #1d4f91; }
+
+.linkbox { margin-top: 14px; padding: 12px; border: 1px dashed var(--field-line); border-radius: 12px; }
+.linkinput { width: 100%; margin: 6px 0; padding: 9px 10px; border: 1px solid var(--field-line); border-radius: 10px; background: var(--bg); font-size: .85rem; }
+.admin-link { color: inherit; opacity: .75; font-size: .85rem; }
+
+/* ============================================================
+   עיצוב "גן של אור" (מאתר ההנצחה): פלטה ירוקה-זהובה, Alef, כרטיס עם דיוקן ועלים
+   ============================================================ */
+:root {
+  /* גיבוי hex לדפדפנים ישנים; oklch בהמשך */
+  --bg: #f1f3ea; --surface: #fdfcf8; --surface-soft: #f6f5ec; --ink: #373b30; --ink-soft: #454a3d; --muted: #5f6356;
+  --line: #dcd9c6; --field-line: #b9b59f;
+  --brand: #7a5517; --brand-ink: #ffffff; --gold: #be8a3f; --ring: #7a5517; --leaf: #7d8a6d;
+  --ok: #3d5a2c; --ok-bg: #e4ebd8; --warn: #7a5517; --warn-bg: #f8edd2; --bad: #9b3a2e; --bad-bg: #f7e3df;
+  --sel: #fbf1d5; --sel-line: #c58f3a; --family-card-bg: #fbf3df; --family-card-border: #c9a566;
+  --shadow: 0 3px 14px rgba(70, 80, 50, .09);
+  --shadow-lg: 0 8px 28px rgba(70, 80, 50, .15);
+  --font: 'Alef', 'Segoe UI', Tahoma, 'Arial Hebrew', Arial, sans-serif;
+  color-scheme: light;
+}
+@supports (color: oklch(0 0 0)) {
+  :root {
+    --bg: oklch(95% 0.014 130); --surface: oklch(99% 0.005 90); --surface-soft: oklch(97% 0.01 100);
+    --ink: oklch(32% 0.0165 130); --ink-soft: oklch(38% 0.0165 130); --muted: oklch(46% 0.011 130);
+    --line: oklch(87% 0.025 100); --field-line: oklch(76% 0.025 100);
+    --brand: oklch(46% 0.1 70); --gold: oklch(65% 0.1 70); --ring: oklch(46% 0.1 70); --leaf: oklch(55% 0.033 125);
+    --ok: oklch(40% 0.07 135); --ok-bg: oklch(93% 0.04 125); --warn: oklch(46% 0.1 70); --warn-bg: oklch(95% 0.045 85);
+    --bad: oklch(46% 0.13 25); --bad-bg: oklch(94% 0.04 25);
+    --sel: oklch(96% 0.05 90); --sel-line: oklch(70% 0.11 75);
+    --family-card-bg: oklch(97% 0.03 85); --family-card-border: oklch(70% 0.08 75);
+    --shadow: 0 3px 14px oklch(40% 0.0275 130 / 0.09); --shadow-lg: 0 8px 28px oklch(40% 0.0275 130 / 0.15);
+  }
+}
+body { font-family: var(--font); background: var(--bg); color: var(--ink); }
+h1, h2, h3 { font-family: var(--font); }
+
+/* כרטיס הפתיחה */
+.hero { background: transparent; color: var(--ink); padding: clamp(24px, 5vw, 48px) 14px 4px; position: relative; overflow: hidden; text-align: center; }
+.hero-card { position: relative; z-index: 1; width: 100%; max-width: 680px; margin: 0 auto; background: var(--surface); border-radius: 26px; box-shadow: var(--shadow-lg);
+  padding: clamp(26px, 5vw, 44px) clamp(18px, 5vw, 36px); display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.hero-photo { width: 132px; height: 132px; border-radius: 50%; overflow: hidden; flex: none; border: 4px solid var(--surface-soft); box-shadow: 0 3px 10px rgba(70, 80, 50, .18); }
+.hero-photo img { width: 100%; height: 100%; object-fit: cover; object-position: center 22%; display: block; }
+.eyebrow { margin: 4px 0 0; color: var(--brand); font-size: 1rem; line-height: 1.8; }
+.eyebrow b { color: var(--ink); }
+.hero h1 { font-size: clamp(1.55rem, 5.6vw, 2.2rem); color: var(--ink); }
+.lead { color: var(--ink-soft); font-size: 1.02rem; line-height: 1.9; max-width: 520px; margin: 4px auto 0; }
+.how { margin-top: 10px; }
+.how li { background: var(--surface-soft); border: 1px solid var(--line); color: var(--ink); }
+.how b { color: var(--brand); }
+.stats { color: var(--muted); margin-top: 6px; }
+.stats strong { color: var(--ink); }
+.leaf-deco { position: absolute; color: var(--leaf); opacity: .32; pointer-events: none; z-index: 0; }
+.leaf-deco.top-right { top: -18px; right: -34px; width: 180px; height: 180px; }
+.leaf-deco.bottom-left { bottom: 6px; left: -34px; width: 160px; height: 160px; }
+@media (max-width: 480px) { .leaf-deco { display: none; } .hero-photo { width: 110px; height: 110px; } }
+
+/* כרטיס הלימוד המשותף */
+.memorial-card { width: min(680px, calc(100% - 28px)); margin: 16px auto 0; padding: 18px 20px; display: flex; gap: 14px; align-items: flex-start;
+  background: var(--family-card-bg); border: 1px dashed var(--family-card-border); border-radius: 18px; color: var(--brand); }
+.memorial-card svg { flex: none; margin-top: 2px; }
+.memorial-card h2 { font-size: 1.1rem; color: var(--ink); }
+.memorial-card p { margin: 6px 0 12px; color: var(--ink); line-height: 1.8; }
+.btn-accent { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 28px; border-radius: 24px; background: var(--brand); color: #fff;
+  font-weight: 600; text-decoration: none; box-shadow: 0 3px 10px rgba(122, 85, 23, .28); }
+.btn-accent:hover { filter: brightness(1.08); color: #fff; }
+
+/* רכיבים בשפה הזו */
+.btn { border-radius: 22px; }
+.chip, .seg { border-radius: 99px; }
+.seg button:first-child { border-radius: 0 99px 99px 0; } .seg button:last-child { border-radius: 99px 0 0 99px; }
+.shelf { border-radius: 18px; box-shadow: var(--shadow); }
+.group-title { color: var(--brand); font-weight: 700; }
+.badge.set { background: oklch(93% 0.035 90); color: var(--brand); }
+@supports not (color: oklch(0 0 0)) { .badge.set { background: #efe8d3; } }
+dialog { border-radius: 22px; }
+footer { color: var(--muted); }
+.demo-banner { background: var(--warn-bg); }
+
+@media (max-width: 560px) {
+  .hero-card { gap: 8px; padding: 22px 16px; }
+  .lead { line-height: 1.75; font-size: .98rem; }
+  .how { margin-top: 4px; }
 }

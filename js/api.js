@@ -62,7 +62,7 @@ const Api = (() => {
   async function getStates() {
     // -> { itemId: { state: 'reserved'|'collected', rid: requestId } }
     const m = {};
-    if (!live) { demoLoad().claims.forEach((c) => { m[c.item_id] = { state: c.state, rid: c.request_id }; }); return m; }
+    if (!live) { demoLoad().claims.forEach((c) => { m[c.item_id] = { state: c.state === 'arranged' ? 'reserved' : c.state, rid: c.request_id }; }); return m; }
     const rows = await http('/rest/v1/item_state?select=item_id,state,request_id');
     rows.forEach((r) => { m[r.item_id] = { state: r.state, rid: r.request_id }; });
     return m;
@@ -91,7 +91,7 @@ const Api = (() => {
         else if (claimed.length >= room) failed.push({ id, reason: 'limit' });
         else {
           taken.add(id); claimed.push({ id });
-          s.claims.push({ item_id: id, request_id: requestId, name, phone, email: email || '', note: note || '', token, state: 'reserved', created_at: new Date().toISOString() });
+          s.claims.push({ item_id: id, request_id: requestId, name, phone, email: email || '', note: note || '', pickup_note: '', token, state: 'reserved', created_at: new Date().toISOString() });
         }
       });
       demoSave(s);
@@ -112,13 +112,40 @@ const Api = (() => {
     if (!mine) return false;
     if (!live) {
       const s = demoLoad();
-      s.claims = s.claims.filter((c) => !(c.item_id === itemId && c.token === mine.token && c.state === 'reserved'));
+      s.claims = s.claims.filter((c) => !(c.item_id === itemId && c.token === mine.token && c.state !== 'collected'));
       demoSave(s);
     } else {
       await http('/rest/v1/rpc/cancel_claim', { method: 'POST', body: { p_item: itemId, p_token: mine.token } });
     }
     removeMine(itemId);
     return true;
+  }
+
+  /* ---------- "הבקשות שלי": סטטוס והערת איסוף, לפי הסוד האישי ---------- */
+  async function claimsByToken(token) {
+    if (!live) return demoLoad().claims.filter((c) => c.token === token).map((c) => ({ item_id: c.item_id, request_id: c.request_id, state: c.state, pickup_note: c.pickup_note || '', created_at: c.created_at }));
+    return http('/rest/v1/rpc/my_claims', { method: 'POST', body: { p_tokens: [token] } });
+  }
+  // מחזיר [{item_id, request_id, state, pickup_note, token}] לכל הבקשות במכשיר הזה
+  async function myClaims() {
+    const tokens = Array.from(new Set(getMine().map((m) => m.token)));
+    const out = [];
+    for (const t of tokens) { (await claimsByToken(t)).forEach((r) => out.push(Object.assign({ token: t }, r))); }
+    return out;
+  }
+  // שחזור בקשות ממכשיר אחר בעזרת הקישור האישי (?r=token1,token2)
+  async function restoreFromTokens(tokens) {
+    const valid = tokens.filter((t) => /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(t)).slice(0, 10);
+    let n = 0;
+    for (const t of valid) {
+      const rows = await claimsByToken(t);
+      if (rows.length) { addMine(rows.map((r) => ({ itemId: r.item_id, token: t, requestId: r.request_id }))); n += rows.length; }
+    }
+    return n;
+  }
+  function personalLink() {
+    const tokens = Array.from(new Set(getMine().map((m) => m.token)));
+    return tokens.length ? location.origin + location.pathname + '?r=' + tokens.join(',') : '';
   }
 
   /* ---------- מנהל ---------- */
@@ -143,7 +170,7 @@ const Api = (() => {
     },
     async listClaims() {
       if (!live) return demoLoad().claims.slice();
-      return http('/rest/v1/claims?select=item_id,request_id,name,phone,email,note,state,created_at&order=created_at.desc', { token: this.token() });
+      return http('/rest/v1/claims?select=item_id,request_id,name,phone,email,note,pickup_note,state,created_at&order=created_at.desc', { token: this.token() });
     },
     async cancel(itemId) {
       if (!live) { const s = demoLoad(); s.claims = s.claims.filter((c) => c.item_id !== itemId); demoSave(s); return; }
@@ -153,6 +180,13 @@ const Api = (() => {
       if (!live) { const s = demoLoad(); s.claims.forEach((c) => { if (c.item_id === itemId) c.state = state; }); demoSave(s); return; }
       await http('/rest/v1/claims?item_id=eq.' + encodeURIComponent(itemId), { method: 'PATCH', body: { state }, token: this.token(), headers: { Prefer: 'return=minimal' } });
     },
+    // מעדכן כמה פריטים יחד: מצב (reserved|arranged|collected) והערת איסוף (אופציונלי)
+    async setBulk(itemIds, state, note) {
+      if (!itemIds.length) return;
+      if (!live) { const s = demoLoad(); s.claims.forEach((c) => { if (itemIds.includes(c.item_id)) { c.state = state; if (note !== undefined) c.pickup_note = note; } }); demoSave(s); return; }
+      const body = { state }; if (note !== undefined) body.pickup_note = note;
+      await http('/rest/v1/claims?item_id=in.(' + itemIds.map(encodeURIComponent).join(',') + ')', { method: 'PATCH', body, token: this.token(), headers: { Prefer: 'return=minimal' } });
+    },
     async setLimit(n) {
       if (!live) { const s = demoLoad(); s.maxItems = n; demoSave(s); return; }
       await http('/rest/v1/settings?id=eq.1', { method: 'PATCH', body: { max_items_per_person: n }, token: this.token(), headers: { Prefer: 'return=minimal' } });
@@ -160,5 +194,5 @@ const Api = (() => {
     demoReset() { try { localStorage.removeItem(DEMO_KEY); localStorage.removeItem(MINE_KEY); } catch (e) { /* ignore */ } },
   };
 
-  return { live, getStates, getSettings, submitRequest, cancelMine, getMine, removeMine, admin, digits, normPhone };
+  return { live, getStates, getSettings, submitRequest, cancelMine, getMine, removeMine, myClaims, restoreFromTokens, personalLink, admin, digits, normPhone };
 })();

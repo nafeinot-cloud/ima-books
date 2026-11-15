@@ -3,11 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="color-scheme" content="light dark">
+  <meta name="color-scheme" content="light">
   <title>ספרי אמא ז״ל – מחכים לבית חדש</title>
   <meta name="description" content="קטלוג הספרים שנשארו מבית אמא ז״ל. עיינו, בחרו ושלחו בקשה.">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#5a3a22">
+  <link rel="icon" href="assets/rivka-portrait.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alef:wght@400;700&display=swap">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -15,13 +19,16 @@
   <noscript><p style="padding:24px;text-align:center">האתר דורש JavaScript. נא לפתוח אותו בדפדפן עדכני.</p></noscript>
 
   <header class="hero">
-    <div class="hero-inner">
+    <svg class="leaf-deco top-right" viewBox="0 0 260 260" aria-hidden="true"><path d="M40 220 C 60 140, 120 80, 220 40" fill="none" stroke="currentColor" stroke-width="2"/><path d="M90 190 C 110 160, 130 150, 150 150" fill="none" stroke="currentColor" stroke-width="2"/><path d="M130 140 C 150 120, 165 110, 190 100" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+    <svg class="leaf-deco bottom-left" viewBox="0 0 220 220" aria-hidden="true"><path d="M20 20 C 60 40, 100 100, 120 200" fill="none" stroke="currentColor" stroke-width="2"/><path d="M50 70 C 70 80, 85 95, 95 115" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+    <div class="hero-card">
+      <div class="hero-photo"><img src="assets/rivka-portrait.jpg" alt="רבקה עינות ז״ל" width="132" height="132"></div>
       <p class="eyebrow">לעילוי נשמת אמנו וסבתנו <b>רבקה בת אברהם ז״ל</b><br>ולעילוי נשמת אבינו וסבנו <b>ישראל בן משה יוסף ז״ל</b></p>
       <h1>ספרי אמא ז״ל מחכים לבית חדש</h1>
-      <p class="lead">אלה הספרים שנשארו בבית. בחרו ספר או סט שלם ושלחו בקשה, ואחזור אליכם לתיאום איסוף מהבית. כל ספר שממשיכים ללמוד בו הוא לעילוי נשמתם.</p>
+      <p class="lead">אלה הספרים שנשארו בבית. בחרו ספר או סט שלם והוסיפו לסל, שלחו בקשה, ואחזור אליכם לתיאום איסוף מהבית. כל ספר שממשיכים ללמוד בו הוא לעילוי נשמתם.</p>
       <ol class="how">
         <li><b>1</b>עיינו לפי מדפים</li>
-        <li><b>2</b>סמנו מה שמעניין</li>
+        <li><b>2</b>הוסיפו לסל</li>
         <li><b>3</b>שלחו בקשה</li>
       </ol>
       <div class="stats">
@@ -31,6 +38,15 @@
       </div>
     </div>
   </header>
+
+  <section class="memorial-card" aria-labelledby="mishna-title">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.2c2.4 3.3 2.4 5.9 0 8.8-2.4-2.9-2.4-5.5 0-8.8z" fill="currentColor"/><rect x="9" y="12" width="6" height="8" rx="1.6" stroke="currentColor" stroke-width="1.7"/><path d="M6.5 20h11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+    <div>
+      <h2 id="mishna-title">לימוד משניות משותף</h2>
+      <p>לימוד משניות משותף לעילוי נשמת אמנו וסבתנו <b>רבקה עינות (בת אברהם גרינגרז) ז״ל</b>.<br>אמא אהובה, סבתא נערצת ומורה בנשמתה. יהי זכרה ברוך.</p>
+      <a class="btn-accent" href="https://www.mishnayahad.com/oselm.jsp?r=6737728843" target="_blank" rel="noopener noreferrer">הצטרפו ללימוד משניות</a>
+    </div>
+  </section>
 
   <div class="demo-banner" id="demo-banner" hidden>מצב הדגמה: הנתונים נשמרים רק בדפדפן הזה ואינם נשלחים לאף אחד.</div>
   <div class="net-banner" id="net-banner" role="alert" hidden>לא הצלחנו לרענן את הרשימה. ייתכן שחלק מהספרים כבר נשמרו. מנסים שוב.</div>
@@ -76,15 +92,15 @@
   </main>
 
   <footer>
-    <p>האתר נבנה באהבה לעילוי נשמת רבקה בת אברהם ז״ל וישראל בן משה יוסף ז״ל.<br>הפרטים שתשאירו ישמשו אך ורק לתיאום איסוף הספרים.</p>
+    <p>האתר נבנה באהבה לעילוי נשמת רבקה בת אברהם ז״ל וישראל בן משה יוסף ז״ל.<br>הפרטים שתשאירו ישמשו אך ורק לתיאום איסוף הספרים.<br><a href="admin.html" class="admin-link">כניסת מנהל</a></p>
   </footer>
 
   <div class="selbar" id="selbar" hidden>
     <div class="selbar-inner">
-      <span class="count" aria-live="polite" id="sel-text">נבחרו 0 פריטים</span>
+      <span class="count" aria-live="polite" id="sel-text">בסל שלי: 0 פריטים</span>
       <span class="row">
-        <button class="btn" type="button" id="sel-clear">נקו בחירה</button>
-        <button class="btn primary" type="button" id="sel-send">שלחו בקשה</button>
+        <button class="btn" type="button" id="sel-clear">ריקון הסל</button>
+        <button class="btn primary" type="button" id="sel-send">לסל ושליחת בקשה</button>
       </span>
     </div>
   </div>
@@ -94,8 +110,8 @@
     <div class="dlg">
       <button class="x" type="button" data-close aria-label="סגירה">×</button>
       <div id="req-form-wrap">
-        <h2 id="req-title" tabindex="-1">שליחת בקשה</h2>
-        <p class="hint">הספרים שבחרתם יישמרו עבורכם. אחזור אליכם לתיאום איסוף מהבית.</p>
+        <h2 id="req-title" tabindex="-1">הסל שלי</h2>
+        <p class="hint">אלה הספרים שבסל. אפשר להסיר פריט ב-×. בשליחה הם יישמרו עבורכם, ואחזור אליכם לתיאום איסוף מהבית. מצב הבקשה יופיע ב"הבקשות שלי".</p>
         <p class="notice warn" id="req-limit" hidden></p>
         <ul class="chosen" id="req-list"></ul>
         <form id="req-form" novalidate>
@@ -122,7 +138,7 @@
           <p class="hint" id="remember-hint">הפרטים יישמרו במכשיר הזה כדי שלא תצטרכו למלא שוב. <button class="btn-link" type="button" id="forget-contact">מחיקת הפרטים השמורים</button></p>
           <div class="err" id="e-form" role="alert"></div>
           <div class="actions">
-            <button class="btn primary" type="submit" id="req-submit">שלחו בקשה</button>
+            <button class="btn primary" type="submit" id="req-submit">שליחת הבקשה</button>
             <button class="btn" type="button" data-close>ביטול</button>
           </div>
         </form>
@@ -136,7 +152,7 @@
     <div class="dlg">
       <button class="x" type="button" data-close aria-label="סגירה">×</button>
       <h2 id="mine-title">הבקשות שלי</h2>
-      <p class="hint">הרשימה נשמרת במכשיר הזה בלבד. כדי לבטל בקשה ממכשיר אחר, פנו אליי ישירות.</p>
+      <p class="hint">כאן רואים את מצב כל בקשה ואת ההודעה שלי לגבי האיסוף.</p>
       <div id="mine-list"></div>
     </div>
   </dialog>

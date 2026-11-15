@@ -7,7 +7,7 @@
   const itemById = Object.fromEntries(CAT.items.map((i) => [i.id, i]));
   const shelfOf = {}; CAT.shelves.forEach((s) => s.items.forEach((id) => { shelfOf[id] = s; }));
   const STATE = { claims: [], tab: 'people', q: '' };
-  const STATE_TEXT = { reserved: 'שמור', collected: 'נמסר' };
+  const STATE_TEXT = { reserved: 'ממתין לתיאום', arranged: 'איסוף נקבע', collected: 'נמסר' };
   let tt;
   function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 2800); }
   const fmt = (iso) => { try { return new Date(iso).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' }); } catch (e) { return ''; } };
@@ -16,8 +16,8 @@
     const map = new Map();
     STATE.claims.forEach((c) => {
       const key = Api.normPhone(c.phone) || c.name;
-      if (!map.has(key)) map.set(key, { key, name: c.name, phone: c.phone, email: c.email, notes: new Set(), items: [], last: c.created_at });
-      const p = map.get(key); p.items.push(c); if (c.note) p.notes.add(c.note);
+      if (!map.has(key)) map.set(key, { key, name: c.name, phone: c.phone, email: c.email, notes: new Set(), items: [], last: c.created_at, pickup: '' });
+      const p = map.get(key); p.items.push(c); if (c.note) p.notes.add(c.note); if (c.pickup_note && !p.pickup) p.pickup = c.pickup_note;
       if (c.created_at > p.last) p.last = c.created_at;
     });
     return Array.from(map.values()).sort((a, b) => (a.last < b.last ? 1 : -1));
@@ -25,9 +25,10 @@
 
   function render() {
     const reserved = STATE.claims.filter((c) => c.state === 'reserved').length;
+    const arranged = STATE.claims.filter((c) => c.state === 'arranged').length;
     const collected = STATE.claims.filter((c) => c.state === 'collected').length;
     $('#c-people').textContent = people().length; $('#c-reserved').textContent = reserved;
-    $('#c-collected').textContent = collected; $('#c-free').textContent = CAT.items.length - STATE.claims.length;
+    $('#c-arranged').textContent = arranged; $('#c-collected').textContent = collected; $('#c-free').textContent = CAT.items.length - STATE.claims.length;
     $('#people').hidden = STATE.tab !== 'people'; $('#free').hidden = STATE.tab !== 'free';
     $('#tab-people').setAttribute('aria-pressed', STATE.tab === 'people'); $('#tab-free').setAttribute('aria-pressed', STATE.tab === 'free');
     renderPeople(); renderFree();
@@ -43,9 +44,15 @@
         ${p.notes.size ? `<p class="hint">הערה: ${Array.from(p.notes).map(esc).join(' | ')}</p>` : ''}
         ${p.items.map((c) => { const i = itemById[c.item_id] || { title: c.item_id }; const sh = shelfOf[c.item_id];
           return `<div class="pitem"><span><b>${esc(i.title)}</b>${sh ? `<span class="hint"> · ${esc(sh.name)}</span>` : ''} <span class="badge ${c.state}">${STATE_TEXT[c.state] || c.state}</span></span>
-            <span class="btns">${c.state === 'reserved' ? `<button class="btn small" data-act="collected" data-id="${esc(c.item_id)}">נמסר</button>` : `<button class="btn small" data-act="reserved" data-id="${esc(c.item_id)}">החזר לשמור</button>`}
+            <span class="btns"><button class="btn small" data-img="${esc(c.item_id)}">תמונה</button>${c.state !== 'collected' ? `<button class="btn small" data-act="collected" data-id="${esc(c.item_id)}">נמסר</button>` : `<button class="btn small" data-act="reserved" data-id="${esc(c.item_id)}">החזר לממתין</button>`}
             <button class="btn small danger" data-act="release" data-id="${esc(c.item_id)}">שחרור</button></span></div>`; }).join('')}
-        <div class="actions no-print"><button class="btn small" data-act="all-collected" data-key="${esc(p.key)}">סמן הכול כנמסר</button></div>
+        <div class="no-print person-actions">
+          <label class="hint" for="pn-${esc(p.key)}"><b>הודעה למבקש</b> (מופיעה לו ב"הבקשות שלי"):</label>
+          <input id="pn-${esc(p.key)}" class="select pickup-input" maxlength="200" placeholder="למשל: איסוף ביום שלישי ב-18:00, רחוב ..." value="${esc(p.pickup)}">
+          <div class="actions">
+            <button class="btn small" data-act="arrange" data-key="${esc(p.key)}">איסוף נקבע + שמירת הודעה</button>
+            <button class="btn small" data-act="all-collected" data-key="${esc(p.key)}">סמן הכול כנמסר</button>
+          </div></div>
       </section>`).join('') : '<p class="empty">אין בקשות להצגה.</p>';
   }
 
@@ -61,10 +68,10 @@
   }
 
   function csv() {
-    const rows = [['תאריך', 'שם', 'טלפון', 'מייל', 'הערה', 'ספר', 'מדף', 'סטטוס']];
+    const rows = [['תאריך', 'שם', 'טלפון', 'מייל', 'הערה', 'ספר', 'מדף', 'סטטוס', 'הודעת איסוף', 'קישור לתמונה']];
     STATE.claims.slice().sort((a, b) => (a.name > b.name ? 1 : -1)).forEach((c) => {
       const i = itemById[c.item_id] || { title: c.item_id };
-      rows.push([fmt(c.created_at), c.name, c.phone, c.email || '', c.note || '', i.title, shelfOf[c.item_id] ? shelfOf[c.item_id].name : '', STATE_TEXT[c.state] || c.state]);
+      rows.push([fmt(c.created_at), c.name, c.phone, c.email || '', c.note || '', i.title, shelfOf[c.item_id] ? shelfOf[c.item_id].name : '', STATE_TEXT[c.state] || c.state, c.pickup_note || '', shelfOf[c.item_id] ? new URL(shelfOf[c.item_id].image, location.href).href : '']);
     });
     // הגנה מפני הזרקת נוסחאות באקסל
     const cell = (v) => { let s = String(v == null ? '' : v); if (/^[=@\t\r]/.test(s) || /^[+\-](?![\d\s().\-]+$)/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
@@ -84,7 +91,11 @@
         await A.cancel(btn.dataset.id);
       } else if (act === 'all-collected') {
         const p = people().find((x) => x.key === btn.dataset.key);
-        if (p) for (const c of p.items) if (c.state === 'reserved') await A.setState(c.item_id, 'collected');
+        if (p) await A.setBulk(p.items.filter((c) => c.state !== 'collected').map((c) => c.item_id), 'collected');
+      } else if (act === 'arrange') {
+        const p = people().find((x) => x.key === btn.dataset.key);
+        const note = (document.getElementById('pn-' + btn.dataset.key) || {}).value || '';
+        if (p) await A.setBulk(p.items.filter((c) => c.state !== 'collected').map((c) => c.item_id), 'arranged', note.trim());
       }
       await load(); toast('עודכן');
     } catch (e) { if (e.status === 401 || e.status === 403) { showLogin(); return; } toast('הפעולה נכשלה: ' + e.message); btn.disabled = false; }
@@ -98,7 +109,20 @@
     load();
   }
 
-  document.addEventListener('click', (e) => { const b = e.target.closest('[data-act]'); if (b) act(b); });
+  function showImage(itemId) {
+    const sh = shelfOf[itemId]; const it = itemById[itemId];
+    if (!sh) return;
+    $('#img-title').textContent = (it ? it.title : itemId) + ' · ' + sh.name;
+    $('#img-pic').src = sh.image; $('#img-pic').alt = 'תמונת המדף: ' + sh.name;
+    $('#img-open').href = sh.image;
+    $('#img-others').innerHTML = sh.items.map((id) => '<li' + (id === itemId ? ' class="here"' : '') + '>' + esc(itemById[id] ? itemById[id].title : id) + '</li>').join('');
+    $('#img-dialog').showModal();
+  }
+  document.addEventListener('click', (e) => {
+    const im = e.target.closest('[data-img]'); if (im) { showImage(im.dataset.img); return; }
+    if (e.target.closest('[data-close]')) { e.target.closest('dialog').close(); return; }
+    const b = e.target.closest('[data-act]'); if (b) act(b);
+  });
   $('#refresh').onclick = load; $('#export').onclick = csv;
   $('#tab-people').onclick = () => { STATE.tab = 'people'; render(); }; $('#tab-free').onclick = () => { STATE.tab = 'free'; render(); };
   $('#a-search').oninput = (e) => { STATE.q = e.target.value; renderPeople(); };

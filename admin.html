@@ -22,6 +22,9 @@
     .btn.small { padding: 5px 11px; font-size: .88rem; }
     .login { max-width: 380px; margin: 60px auto; }
     .tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+    .person-actions { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 10px; }
+    .pickup-input { width: 100%; margin: 6px 0; }
+    .img-others { margin: 4px 0 0; padding-inline-start: 18px; font-size: .92rem; } .img-others .here { font-weight: 700; color: var(--brand); }
     .free-list { columns: 2 280px; padding-inline-start: 18px; }
     @media print { .admin-head .row, .tabs, .no-print { display: none !important; } }
   </style>
@@ -54,7 +57,8 @@
 
     <div class="cards" aria-live="polite">
       <div class="card"><b id="c-people">0</b>אנשים ביקשו</div>
-      <div class="card"><b id="c-reserved">0</b>פריטים שמורים</div>
+      <div class="card"><b id="c-reserved">0</b>ממתינים לתיאום</div>
+      <div class="card"><b id="c-arranged">0</b>איסוף נקבע</div>
       <div class="card"><b id="c-collected">0</b>פריטים נמסרו</div>
       <div class="card"><b id="c-free">0</b>פריטים פנויים</div>
     </div>
@@ -78,6 +82,17 @@
     <div id="people"></div>
     <div id="free" hidden></div>
   </div>
+
+  <dialog id="img-dialog" aria-labelledby="img-title">
+    <div class="dlg">
+      <button class="x" type="button" data-close aria-label="סגירה">×</button>
+      <h2 id="img-title" style="font-size:1.05rem"></h2>
+      <img id="img-pic" alt="" style="width:100%;height:auto;max-height:60vh;object-fit:contain;background:#1d1712;border-radius:12px;margin-top:10px">
+      <p class="hint"><a id="img-open" href="#" target="_blank" rel="noopener">פתיחת התמונה בחלון נפרד (זום)</a></p>
+      <p class="hint" style="margin-bottom:2px">שאר הספרים באותה תמונה (הנוכחי מסומן):</p>
+      <ul id="img-others" class="img-others"></ul>
+    </div>
+  </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="js/config.js"></script>
