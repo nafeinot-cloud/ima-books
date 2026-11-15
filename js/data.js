@@ -804,10 +804,10 @@ window.CATALOG = {
   },
   {
    "id": "n091",
-   "title": "ספרי יהושע בכרך",
+   "title": "ספרי יהושע בכרך (כרכים נוספים)",
    "author": "יהושע בכרך",
    "kind": "collection",
-   "volumes": 6,
+   "volumes": 2,
    "category": "תנ\"ך",
    "desc": ""
   },
@@ -1110,10 +1110,10 @@ window.CATALOG = {
   },
   {
    "id": "n125",
-   "title": "ספרים נוספים במדף (שמות לא קריאים) – הלכה, מחשבה ומוסר",
+   "title": "ספר נוסף במדף (שם לא קריא) – הלכה, מחשבה ומוסר",
    "author": "",
-   "kind": "collection",
-   "volumes": 3,
+   "kind": "single",
+   "volumes": null,
    "category": "אחר",
    "desc": "שלושה כרכים דקים בין הספרים, כיתוב לא קריא. ראו בתמונה."
   },
@@ -1185,7 +1185,7 @@ window.CATALOG = {
    "title": "ספרים ישנים נוספים במדף (שמות לא קריאים) – סדורים וספרים ישנים",
    "author": "",
    "kind": "collection",
-   "volumes": 12,
+   "volumes": 7,
    "category": "אחר",
    "desc": "כרכים ישנים בכריכות בד. ראו בתמונה."
   },
@@ -1210,11 +1210,11 @@ window.CATALOG = {
   {
    "id": "n136",
    "title": "שיחות במקרא",
-   "author": "",
+   "author": "בנימין צביאלי",
    "kind": "single",
    "volumes": null,
    "category": "תנ\"ך",
-   "desc": "כיתוב חלקי."
+   "desc": ""
   },
   {
    "id": "n137",
@@ -1227,21 +1227,21 @@ window.CATALOG = {
   },
   {
    "id": "n138",
-   "title": "ספר נוסף במדף (שם לא קריא) – ששה סדרי משנה",
+   "title": "הרהורי שלמה",
    "author": "",
    "kind": "single",
    "volumes": null,
-   "category": "אחר",
-   "desc": "כרך אפור-כהה בקצה המדף."
+   "category": "מחשבה",
+   "desc": ""
   },
   {
    "id": "n139",
-   "title": "ספר נוסף במדף (שם לא קריא) – ילקוט מעם לועז",
+   "title": "קונקורדנציה לתנ״ך",
    "author": "",
    "kind": "single",
    "volumes": null,
-   "category": "אחר",
-   "desc": "כרך אפור גדול בקצה המדף."
+   "category": "תנ\"ך",
+   "desc": ""
   },
   {
    "id": "n140",
@@ -1257,18 +1257,18 @@ window.CATALOG = {
    "title": "ספרים נוספים במדף (שמות לא קריאים) – אנציקלופדיות",
    "author": "",
    "kind": "collection",
-   "volumes": 4,
+   "volumes": 3,
    "category": "אחר",
    "desc": "כולל שלושה כרכי בד אפורים. ראו בתמונה."
   },
   {
    "id": "n142",
-   "title": "ספרים נוספים במדף (שמות לא קריאים) – הרב יעקבסון ומכתב מאליהו",
+   "title": "ספר התודעה (כרכים א-ב)",
    "author": "",
-   "kind": "collection",
+   "kind": "set",
    "volumes": 2,
-   "category": "אחר",
-   "desc": "שני כרכי בד בז׳ גדולים בקצה, מסומנים א-ב. ראו בתמונה."
+   "category": "מחשבה",
+   "desc": ""
   },
   {
    "id": "n143",
@@ -1278,15 +1278,6 @@ window.CATALOG = {
    "volumes": null,
    "category": "פרשנות",
    "desc": ""
-  },
-  {
-   "id": "n144",
-   "title": "ספרים נוספים במדף (שמות לא קריאים) – עיוני תנ״ך",
-   "author": "",
-   "kind": "collection",
-   "volumes": 6,
-   "category": "תנ\"ך",
-   "desc": "כרכים בעטיפות בלויות. ראו בתמונה."
   },
   {
    "id": "n145",
@@ -1308,12 +1299,12 @@ window.CATALOG = {
   },
   {
    "id": "n147",
-   "title": "ספר נוסף במדף (שם לא קריא) – ארבעה טורים ותלמוד",
-   "author": "",
+   "title": "סדר הקורות בחמש",
+   "author": "אליעזר שולמן",
    "kind": "single",
    "volumes": null,
-   "category": "אחר",
-   "desc": "כרך גדול ושטוח נשען בקצה."
+   "category": "היסטוריה",
+   "desc": ""
   },
   {
    "id": "n148",
@@ -1335,10 +1326,10 @@ window.CATALOG = {
   },
   {
    "id": "n150",
-   "title": "ספרים נוספים במדף (שמות לא קריאים) – מדרש רבה",
+   "title": "ספר נוסף במדף (שם לא קריא) – מדרש רבה",
    "author": "",
-   "kind": "collection",
-   "volumes": 3,
+   "kind": "single",
+   "volumes": null,
    "category": "אחר",
    "desc": "כולל כרך אדום מוכתר וחוברת דקה. ראו בתמונה."
   },
@@ -1404,6 +1395,150 @@ window.CATALOG = {
    "volumes": null,
    "category": "אנציקלופדיה",
    "desc": ""
+  },
+  {
+   "id": "n158",
+   "title": "נאחז בסבך",
+   "author": "חיים נבון",
+   "kind": "single",
+   "volumes": null,
+   "category": "מחשבה",
+   "desc": ""
+  },
+  {
+   "id": "n159",
+   "title": "איש האמונה הבודד",
+   "author": "הרב סולוביצ׳יק",
+   "kind": "single",
+   "volumes": null,
+   "category": "מחשבה",
+   "desc": ""
+  },
+  {
+   "id": "n160",
+   "title": "בין השיטין של התורה",
+   "author": "הרב ברוך ישר",
+   "kind": "single",
+   "volumes": null,
+   "category": "מחשבה",
+   "desc": ""
+  },
+  {
+   "id": "n161",
+   "title": "לשעה ולדורות",
+   "author": "הרב איסר פרנקל",
+   "kind": "single",
+   "volumes": null,
+   "category": "מחשבה",
+   "desc": ""
+  },
+  {
+   "id": "n162",
+   "title": "בלב ורגש",
+   "author": "הרב רפאל חסמן",
+   "kind": "single",
+   "volumes": null,
+   "category": "מחשבה",
+   "desc": ""
+  },
+  {
+   "id": "n163",
+   "title": "מאוצרנו הישן (עותק נוסף)",
+   "author": "",
+   "kind": "single",
+   "volumes": null,
+   "category": "חסידות / מוסר",
+   "desc": ""
+  },
+  {
+   "id": "n164",
+   "title": "קשרי מלחמה",
+   "author": "הרב אייל קרים",
+   "kind": "single",
+   "volumes": null,
+   "category": "היסטוריה",
+   "desc": ""
+  },
+  {
+   "id": "n165",
+   "title": "זבח משפחה – חוברת היובל",
+   "author": "",
+   "kind": "single",
+   "volumes": null,
+   "category": "היסטוריה",
+   "desc": ""
+  },
+  {
+   "id": "n166",
+   "title": "יונה בן אמתי ואליהו",
+   "author": "יהושע בכרך",
+   "kind": "single",
+   "volumes": null,
+   "category": "תנ\"ך",
+   "desc": ""
+  },
+  {
+   "id": "n167",
+   "title": "מערכי לב",
+   "author": "הרב בר-שאול",
+   "kind": "single",
+   "volumes": null,
+   "category": "תנ\"ך",
+   "desc": ""
+  },
+  {
+   "id": "n168",
+   "title": "מה בין שאול לדוד",
+   "author": "יהושע בכרך",
+   "kind": "single",
+   "volumes": null,
+   "category": "תנ\"ך",
+   "desc": ""
+  },
+  {
+   "id": "n169",
+   "title": "מצור ולב",
+   "author": "בר שאול",
+   "kind": "single",
+   "volumes": null,
+   "category": "תנ\"ך",
+   "desc": ""
+  },
+  {
+   "id": "n170",
+   "title": "מסכת אבות",
+   "author": "קהתי",
+   "kind": "single",
+   "volumes": null,
+   "category": "משנה",
+   "desc": ""
+  },
+  {
+   "id": "n171",
+   "title": "אמה של מלכות",
+   "author": "בכרך",
+   "kind": "single",
+   "volumes": null,
+   "category": "תנ\"ך",
+   "desc": ""
+  },
+  {
+   "id": "n172",
+   "title": "סיפור חסידים",
+   "author": "זווין",
+   "kind": "single",
+   "volumes": null,
+   "category": "חסידות / מוסר",
+   "desc": ""
+  },
+  {
+   "id": "n173",
+   "title": "סיפור חסידים – מועדים",
+   "author": "",
+   "kind": "single",
+   "volumes": null,
+   "category": "חסידות / מוסר",
+   "desc": ""
   }
  ],
  "shelves": [
@@ -1457,7 +1592,9 @@ window.CATALOG = {
     "n020",
     "n021",
     "n022",
-    "n125"
+    "n125",
+    "n158",
+    "n159"
    ],
    "w": 1150,
    "h": 820
@@ -1551,7 +1688,12 @@ window.CATALOG = {
     "n130",
     "n131",
     "n132",
-    "n133"
+    "n133",
+    "n160",
+    "n161",
+    "n162",
+    "n163",
+    "n164"
    ],
    "w": 850,
    "h": 440
@@ -1625,7 +1767,8 @@ window.CATALOG = {
     "n072",
     "n073",
     "n140",
-    "n141"
+    "n141",
+    "n165"
    ],
    "w": 1400,
    "h": 634
@@ -1696,7 +1839,12 @@ window.CATALOG = {
     "n089",
     "n090",
     "n091",
-    "n144"
+    "n166",
+    "n167",
+    "n168",
+    "n169",
+    "n170",
+    "n171"
    ],
    "w": 1090,
    "h": 740
@@ -1759,7 +1907,9 @@ window.CATALOG = {
     "n117",
     "n118",
     "n119",
-    "n150"
+    "n150",
+    "n172",
+    "n173"
    ],
    "w": 1400,
    "h": 627
