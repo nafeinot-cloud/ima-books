@@ -8,6 +8,7 @@
   const shelfOf = {}; CAT.shelves.forEach((s) => s.items.forEach((id) => { shelfOf[id] = s; }));
   const STATE = { claims: [], tab: 'people', q: '' };
   const STATE_TEXT = { reserved: 'ממתין לתיאום', arranged: 'איסוף נקבע', collected: 'נמסר' };
+  const slotLabel = (id) => ((((window.SITE_CONFIG || {}).PICKUP_SLOTS || []).find((s) => s.id === id)) || {}).label || 'לא נבחר';
   let tt;
   function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 2800); }
   const fmt = (iso) => { try { return new Date(iso).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' }); } catch (e) { return ''; } };
@@ -41,6 +42,7 @@
       <section class="panel person" data-key="${esc(p.key)}">
         <h3>${esc(p.name)}</h3>
         <div class="contact"><a href="tel:${esc((/^\s*\+/.test(p.phone) ? '+' : '') + Api.digits(p.phone))}" dir="ltr">${esc(p.phone)}</a>${/^[^\s@,;<>"]+@[^\s@,;<>"]+\.[^\s@,;<>"]+$/.test(p.email || '') ? `<a href="mailto:${esc(p.email)}" dir="ltr">${esc(p.email)}</a>` : (p.email ? `<span dir="ltr">${esc(p.email)}</span>` : '')}<span>${esc(fmt(p.last))}</span></div>
+        <p class="hint"><b>מועד איסוף שנבחר:</b> ${esc(Array.from(new Set(p.items.map((c) => slotLabel(c.pickup_slot)))).join(', '))}</p>
         ${p.notes.size ? `<p class="hint">הערה: ${Array.from(p.notes).map(esc).join(' | ')}</p>` : ''}
         ${p.items.map((c) => { const i = itemById[c.item_id] || { title: c.item_id }; const sh = shelfOf[c.item_id];
           return `<div class="pitem"><span><b>${esc(i.title)}</b>${sh ? `<span class="hint"> · ${esc(sh.name)}</span>` : ''} <span class="badge ${c.state}">${STATE_TEXT[c.state] || c.state}</span></span>
@@ -68,10 +70,10 @@
   }
 
   function csv() {
-    const rows = [['תאריך', 'שם', 'טלפון', 'מייל', 'הערה', 'ספר', 'מדף', 'סטטוס', 'הודעת איסוף', 'קישור לתמונה']];
+    const rows = [['תאריך', 'שם', 'טלפון', 'מייל', 'הערה', 'ספר', 'מדף', 'סטטוס', 'הודעת איסוף', 'קישור לתמונה', 'מועד איסוף']];
     STATE.claims.slice().sort((a, b) => (a.name > b.name ? 1 : -1)).forEach((c) => {
       const i = itemById[c.item_id] || { title: c.item_id };
-      rows.push([fmt(c.created_at), c.name, c.phone, c.email || '', c.note || '', i.title, shelfOf[c.item_id] ? shelfOf[c.item_id].name : '', STATE_TEXT[c.state] || c.state, c.pickup_note || '', shelfOf[c.item_id] ? new URL(shelfOf[c.item_id].image, location.href).href : '']);
+      rows.push([fmt(c.created_at), c.name, c.phone, c.email || '', c.note || '', i.title, shelfOf[c.item_id] ? shelfOf[c.item_id].name : '', STATE_TEXT[c.state] || c.state, c.pickup_note || '', shelfOf[c.item_id] ? new URL(shelfOf[c.item_id].image, location.href).href : '', slotLabel(c.pickup_slot)]);
     });
     // הגנה מפני הזרקת נוסחאות באקסל
     const cell = (v) => { let s = String(v == null ? '' : v); if (/^[=@\t\r]/.test(s) || /^[+\-](?![\d\s().\-]+$)/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };

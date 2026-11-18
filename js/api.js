@@ -78,7 +78,7 @@ const Api = (() => {
    * שולח בקשה. מחזיר { claimed: [{id}], failed: [{id, reason}], canCancel }
    * reason: 'taken' | 'limit' | 'unknown'.  canCancel=false אם לא הצלחנו לשמור במכשיר את אפשרות הביטול.
    */
-  async function submitRequest({ itemIds, name, phone, email, note, website }) {
+  async function submitRequest({ itemIds, name, phone, email, note, website, slot }) {
     if (!live) {
       const s = demoLoad();
       const taken = new Set(s.claims.map((c) => c.item_id));
@@ -91,20 +91,29 @@ const Api = (() => {
         else if (claimed.length >= room) failed.push({ id, reason: 'limit' });
         else {
           taken.add(id); claimed.push({ id });
-          s.claims.push({ item_id: id, request_id: requestId, name, phone, email: email || '', note: note || '', pickup_note: '', token, state: 'reserved', created_at: new Date().toISOString() });
+          s.claims.push({ item_id: id, request_id: requestId, name, phone, email: email || '', note: note || '', pickup_note: '', pickup_slot: slot || '', token, state: 'reserved', created_at: new Date().toISOString() });
         }
       });
       demoSave(s);
       const canCancel = claimed.length ? addMine(claimed.map((c) => ({ itemId: c.id, token, requestId }))) : true;
-      return { claimed, failed, canCancel };
+      return { claimed, failed, canCancel, slot, address: '(כתובת האיסוף תוצג כאן באתר החי)', contact_email: '' };
     }
     const data = await http('/functions/v1/submit-request', {
       method: 'POST',
-      body: { items: itemIds, name, phone, email: email || '', note: note || '', website: website || '' },
+      body: { items: itemIds, name, phone, email: email || '', note: note || '', website: website || '', slot: slot || '' },
     });
     const claimed = data.claimed || [];
     const canCancel = claimed.length ? addMine(claimed.map((c) => ({ itemId: c.id, token: data.token, requestId: data.request_id }))) : true;
-    return { claimed, failed: data.failed || [], canCancel };
+    return { claimed, failed: data.failed || [], canCancel, slot: data.slot || slot, address: data.address || '', contact_email: data.contact_email || '' };
+  }
+
+  // כתובת האיסוף ומייל ליצירת קשר: נחשפים רק למי שמחזיק בסוד של בקשה קיימת
+  async function pickupInfo() {
+    const tokens = Array.from(new Set(getMine().map((m) => m.token)));
+    if (!tokens.length) return { address: '', contact_email: '' };
+    if (!live) return { address: '(כתובת האיסוף תוצג כאן באתר החי)', contact_email: '' };
+    const rows = await http('/rest/v1/rpc/pickup_info', { method: 'POST', body: { p_tokens: tokens } });
+    return rows && rows[0] ? rows[0] : { address: '', contact_email: '' };
   }
 
   async function cancelMine(itemId) {
@@ -123,7 +132,7 @@ const Api = (() => {
 
   /* ---------- "הבקשות שלי": סטטוס והערת איסוף, לפי הסוד האישי ---------- */
   async function claimsByToken(token) {
-    if (!live) return demoLoad().claims.filter((c) => c.token === token).map((c) => ({ item_id: c.item_id, request_id: c.request_id, state: c.state, pickup_note: c.pickup_note || '', created_at: c.created_at }));
+    if (!live) return demoLoad().claims.filter((c) => c.token === token).map((c) => ({ item_id: c.item_id, request_id: c.request_id, state: c.state, pickup_note: c.pickup_note || '', pickup_slot: c.pickup_slot || '', created_at: c.created_at }));
     return http('/rest/v1/rpc/my_claims', { method: 'POST', body: { p_tokens: [token] } });
   }
   // מחזיר [{item_id, request_id, state, pickup_note, token}] לכל הבקשות במכשיר הזה
@@ -170,7 +179,7 @@ const Api = (() => {
     },
     async listClaims() {
       if (!live) return demoLoad().claims.slice();
-      return http('/rest/v1/claims?select=item_id,request_id,name,phone,email,note,pickup_note,state,created_at&order=created_at.desc', { token: this.token() });
+      return http('/rest/v1/claims?select=item_id,request_id,name,phone,email,note,pickup_note,pickup_slot,state,created_at&order=created_at.desc', { token: this.token() });
     },
     async cancel(itemId) {
       if (!live) { const s = demoLoad(); s.claims = s.claims.filter((c) => c.item_id !== itemId); demoSave(s); return; }
@@ -194,5 +203,5 @@ const Api = (() => {
     demoReset() { try { localStorage.removeItem(DEMO_KEY); localStorage.removeItem(MINE_KEY); } catch (e) { /* ignore */ } },
   };
 
-  return { live, getStates, getSettings, submitRequest, cancelMine, getMine, removeMine, myClaims, restoreFromTokens, personalLink, admin, digits, normPhone };
+  return { live, getStates, getSettings, submitRequest, pickupInfo, cancelMine, getMine, removeMine, myClaims, restoreFromTokens, personalLink, admin, digits, normPhone };
 })();

@@ -25,7 +25,7 @@
       <div class="hero-photo"><img src="assets/rivka-portrait.jpg" alt="רבקה עינות ז״ל" width="132" height="132"></div>
       <p class="eyebrow">לעילוי נשמת אמנו וסבתנו <b>רבקה בת אברהם ז״ל</b><br>ולעילוי נשמת אבינו וסבנו <b>ישראל בן משה יוסף ז״ל</b></p>
       <h1>ספרי אמא ז״ל מחכים לבית חדש</h1>
-      <p class="lead">אלה הספרים שנשארו בבית. בחרו ספר או סט שלם והוסיפו לסל, שלחו בקשה, ואחזור אליכם לתיאום איסוף מהבית. כל ספר שממשיכים ללמוד בו הוא לעילוי נשמתם.</p>
+      <p class="lead">אלה הספרים שנשארו בבית. בחרו ספר או סט שלם והוסיפו לסל, שלחו בקשה, ובחרו אחד ממועדי האיסוף מהבית. כל ספר שממשיכים ללמוד בו הוא לעילוי נשמתם.</p>
       <ol class="how">
         <li><b>1</b>עיינו לפי מדפים</li>
         <li><b>2</b>הוסיפו לסל</li>
@@ -38,6 +38,13 @@
       </div>
     </div>
   </header>
+
+  <section class="pickup-card" aria-labelledby="pickup-title">
+    <h2 id="pickup-title">איסוף הספרים</h2>
+    <p>הספרים נמצאים בבית המשפחה בירושלים, בגבעת שאול. כתובת האיסוף המדויקת תישלח אליכם עם שליחת הבקשה.</p>
+    <p><b>מועדי האיסוף:</b> <span id="pickup-dates"></span></p>
+    <p><b>מי ששולח בקשה מתחייב לבוא לאסוף באחד משני מועדי האיסוף האלה.</b> אם הספרים לא ייאספו, הם יחזרו להיות מסומנים כפנויים לאחרים.</p>
+  </section>
 
   <section class="memorial-card" aria-labelledby="mishna-title">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.2c2.4 3.3 2.4 5.9 0 8.8-2.4-2.9-2.4-5.5 0-8.8z" fill="currentColor"/><rect x="9" y="12" width="6" height="8" rx="1.6" stroke="currentColor" stroke-width="1.7"/><path d="M6.5 20h11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
@@ -111,7 +118,7 @@
       <button class="x" type="button" data-close aria-label="סגירה">×</button>
       <div id="req-form-wrap">
         <h2 id="req-title" tabindex="-1">הסל שלי</h2>
-        <p class="hint">אלה הספרים שבסל. אפשר להסיר פריט ב-×. בשליחה הם יישמרו עבורכם, ואחזור אליכם לתיאום איסוף מהבית. מצב הבקשה יופיע ב"הבקשות שלי".</p>
+        <p class="hint">אלה הספרים שבסל. אפשר להסיר פריט ב-×. בשליחה הם יישמרו עבורכם עד האיסוף במועד שתבחרו. מצב הבקשה יופיע ב"הבקשות שלי".</p>
         <p class="notice warn" id="req-limit" hidden></p>
         <ul class="chosen" id="req-list"></ul>
         <form id="req-form" novalidate>
@@ -130,6 +137,12 @@
             <input id="f-email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="120" dir="ltr" class="ltr">
             <div class="err" id="e-email" aria-live="polite"></div>
           </div>
+          <fieldset class="field slots">
+            <legend>באיזה מועד תאספו? *</legend>
+            <div id="slot-options"></div>
+            <div class="err" id="e-slot" aria-live="polite"></div>
+          </fieldset>
+          <p class="notice warn">שליחת הבקשה היא התחייבות לבוא לאסוף את הספרים באחד משני המועדים. ספרים שלא ייאספו יחזרו להיות מסומנים כפנויים.</p>
           <div class="field">
             <label for="f-note">הערה (לא חובה)</label>
             <textarea id="f-note" name="note" rows="2" maxlength="300"></textarea>

@@ -200,8 +200,19 @@
         : `אפשר לשמור עד ${itemsText(S.maxItems)} לכל אדם.`;
     } else w.hidden = true;
   }
+  const SLOTS = (window.SITE_CONFIG || {}).PICKUP_SLOTS || [];
+  const slotLabel = (id) => (SLOTS.find((s) => s.id === id) || {}).label || '';
+  function buildSlots() {
+    $('#slot-options').innerHTML = SLOTS.map((s, i) => `<label class="slot-opt"><input type="radio" name="slot" value="${esc(s.id)}" ${i === 0 && SLOTS.length === 1 ? 'checked' : ''}> ${esc(s.label)}</label>`).join('');
+    $('#pickup-dates').textContent = SLOTS.map((s) => s.label).join(' או ');
+  }
+  function addressBox(address, email, slot) {
+    return `<div class="addr-box"><b>פרטי האיסוף</b><br>${slot ? 'מועד שבחרתם: <b>' + esc(slotLabel(slot)) + '</b><br>' : ''}${address ? 'כתובת: ' + esc(address) + '<br>' : ''}${email ? 'לשאלות: <a href="mailto:' + esc(email) + '" dir="ltr">' + esc(email) + '</a><br>' : ''}<span class="hint">אם לא תגיעו לאסוף, הספרים יחזרו להיות מסומנים כפנויים.</span></div>`;
+  }
   function openRequest() {
     if (!S.selected.size) return;
+    $$('#req-form input[name="slot"]').forEach((x) => { x.checked = SLOTS.length === 1; });
+    $('#e-slot').textContent = '';
     const c = loadContact();
     $('#f-name').value = c.name || ''; $('#f-phone').value = c.phone || ''; $('#f-email').value = c.email || '';
     $('#f-note').value = ''; $('#f-website').value = '';
@@ -222,9 +233,12 @@
       $('#e-' + k).textContent = errs[k] || '';
       if (errs[k]) $('#f-' + k).setAttribute('aria-invalid', 'true'); else $('#f-' + k).removeAttribute('aria-invalid');
     });
+    const slotOk = !!$('#req-form input[name="slot"]:checked');
+    $('#e-slot').textContent = slotOk ? '' : 'נא לבחור מועד איסוף';
+    if (!slotOk && !Object.keys(errs).length) { const r = $('#req-form input[name="slot"]'); if (r) r.focus(); return false; }
     const first = ['name', 'phone', 'email'].find((k) => errs[k]);
     if (first) $('#f-' + first).focus();
-    return !first;
+    return !first && slotOk;
   }
   async function submitRequest(ev) {
     ev.preventDefault();
@@ -235,6 +249,7 @@
     const payload = {
       itemIds: Array.from(S.selected), name: $('#f-name').value.trim(), phone: $('#f-phone').value.trim(),
       email: $('#f-email').value.trim(), note: $('#f-note').value.trim(), website: $('#f-website').value,
+      slot: ($('#req-form input[name="slot"]:checked') || {}).value || '',
     };
     try {
       const res = await Api.submitRequest(payload);
@@ -256,7 +271,8 @@
     let h = '';
     if (res.claimed.length) {
       const n = res.claimed.length;
-      h += `<h2 tabindex="-1" id="res-title">הבקשה נשלחה, תודה!</h2><div class="notice ok">${n === 1 ? 'נשמר עבורכם פריט אחד' : 'נשמרו עבורכם ' + n + ' פריטים'}. אחזור אליכם בהקדם לתיאום איסוף מהבית.</div>
+      h += `<h2 tabindex="-1" id="res-title">הבקשה נשלחה, תודה!</h2><div class="notice ok">${n === 1 ? 'נשמר עבורכם פריט אחד' : 'נשמרו עבורכם ' + n + ' פריטים'}. הם שמורים עבורכם עד האיסוף.</div>
+        ${addressBox(res.address, res.contact_email, res.slot)}
         <ul>${res.claimed.map((c) => `<li>${esc(itemById[c.id].title)}</li>`).join('')}</ul>`;
       h += res.canCancel === false
         ? '<div class="notice warn">לא הצלחנו לשמור במכשיר הזה את האפשרות לבטל בעצמכם. אם תרצו לבטל, פנו אליי ישירות.</div>'
@@ -297,7 +313,14 @@
     Api.getMine().forEach((m) => { if (!rows.some((r) => r.item_id === m.itemId && r.token === m.token)) Api.removeMine(m.itemId); });
     updateMine();
     const notes = Array.from(new Set(rows.filter((r) => r.pickup_note).map((r) => r.pickup_note)));
-    let h = notes.map((n) => `<div class="notice ok"><b>הודעה לגבי האיסוף:</b> ${esc(n)}</div>`).join('');
+    let h = '';
+    if (rows.length) {
+      let info = { address: '', contact_email: '' };
+      try { info = await Api.pickupInfo(); } catch (e) { /* ignore */ }
+      const slots = Array.from(new Set(rows.map((r) => r.pickup_slot).filter(Boolean)));
+      h += addressBox(info.address, info.contact_email, '').replace('<br><span class="hint">', (slots.length ? 'מועד האיסוף שבחרתם: <b>' + slots.map((s) => esc(slotLabel(s))).join(', ') + '</b><br>' : '') + '<span class="hint">');
+    }
+    h += notes.map((n) => `<div class="notice ok"><b>הודעה לגבי האיסוף:</b> ${esc(n)}</div>`).join('');
     h += rows.length ? rows.map((r) => {
       const i = itemById[r.item_id];
       return `<div class="mine-item"><span>${esc(i.title)}<br><span class="badge ${r.state}">${MINE_TEXT[r.state] || r.state}</span></span>${r.state !== 'collected' ? `<button class="btn danger" type="button" data-cancel="${r.item_id}">בטלו בקשה</button>` : ''}</div>`;
@@ -440,7 +463,7 @@
 
   /* ---------- אתחול ---------- */
   function init() {
-    buildShelves(); buildList(); buildSelects(); initLightbox(); bind();
+    buildSlots(); buildShelves(); buildList(); buildSelects(); initLightbox(); bind();
     ssGet('sel', []).forEach((id) => { if (itemById[id]) S.selected.add(id); });
     $('#demo-banner').hidden = Api.live;
     applyStates(); measureToolbar();
